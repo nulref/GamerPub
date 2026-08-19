@@ -1,19 +1,20 @@
 # Gamer Pub
 
-Gamer Pub is a Godot-powered game collection presented through a shared tavern-themed launcher. The project is organized as a single Godot application so the launcher, individual games, and shared systems can move between scenes without managing separate executables.
+Gamer Pub is a Godot-powered game collection presented through a shared tavern-themed launcher. The launcher and every game run as scenes in one Godot project, so switching games does not require separate executables.
 
 ## Current status
 
-The first launcher menu is in place. It includes:
+The launcher currently includes:
 
-- A responsive main menu built over the tavern background
-- A data-driven game-card carousel with a maximum of six visible cards
-- Previous and next controls that move through the games one card at a time
-- Mouse hover and keyboard focus effects with 10% card enlargement
-- Selectable cards and a `game_chosen` signal for future scene routing
-- Responsive card sizing for smaller window dimensions
+- A responsive, data-driven carousel with at most six visible cards
+- Mouse, keyboard-focus, and previous/next navigation
+- Joker and 10,000 as playable games in the collection
+- Eight placeholder entries ready to be replaced by future games
+- Direct scene routing into each game and return routes back to Gamer Pub
 
-The ten current game entries are placeholders and reuse the Gamer Pub logo until individual games and their artwork are added.
+Joker supports local play against bots and retains its Discord multiplayer bridge. Multiplayer is available only when the exported game is hosted by Joker's Discord Activity shell.
+
+10,000 supports 2–8 local hot-seat players, interactive dice selection, the 1,000-point opening requirement, hot dice, and the Gamer Pub "go for it" house rule.
 
 ## Technology
 
@@ -26,39 +27,83 @@ The ten current game entries are placeholders and reuse the Gamer Pub logo until
 
 ```text
 Gamer Pub/
-├── project.godot                 # Root Godot project configuration
+├── project.godot
 ├── launcher/
-│   ├── main_menu.tscn            # Launcher main scene
+│   ├── main_menu.tscn
 │   ├── scripts/
-│   │   ├── main_menu.gd          # Carousel data, navigation, and selection
-│   │   └── game_card.gd          # Reusable interactive game card
-│   └── assets/art/               # Launcher background and logo artwork
-├── games/                         # Individual game modules (planned)
-├── shared/                        # Shared scenes, scripts, themes, and assets (planned)
-└── autoload/                      # Global services and scene routing (planned)
+│   └── assets/art/
+├── games/
+│   ├── joker/
+│   │   ├── assets/                 # Joker-specific art and audio
+│   │   ├── resources/              # Card definitions used by Joker
+│   │   ├── scenes/
+│   │   ├── scripts/
+│   │   └── tests/
+│   └── tenk/                       # 10,000 dice game
+│       ├── scenes/
+│       ├── scripts/
+│       └── tests/
+├── shared/
+│   └── assets/
+│       ├── Cards/                  # Shared playing-card artwork
+│       ├── Chips/                  # Shared chip artwork
+│       └── Dice/                   # Shared die artwork
+└── tests/                           # Collection-level integration checks
 ```
 
-Each game should eventually live in its own folder under `games/`, alongside the launcher rather than inside it.
+Game-specific files stay under `games/<game_name>/`. Assets and systems intentionally reused by multiple games belong under `shared/`. Global services must use game-specific names unless they are genuinely shared across the whole collection.
 
 ## Running the project
 
 1. Install Godot 4.7.1 or a compatible Godot 4 release.
-2. Import `project.godot` into the Godot Project Manager.
-3. Open the project and press **F5** to run it.
+2. Import the root `project.godot` into the Godot Project Manager.
+3. Press **F5** to open the Gamer Pub launcher.
+4. Select **Joker** or **10,000** from the carousel.
 
-The launcher is configured as the project's main scene.
+From Joker's menu, **Back to Gamer Pub** returns to the launcher.
 
-## Launcher controls
+## 10,000 controls
 
-- Hover over or focus a card to enlarge and highlight it.
-- Click a card to select it.
-- Use the on-screen arrows or the keyboard's **Left** and **Right** arrow keys to navigate.
+- Select scoring dice, then choose **Set Aside** to add them to the turn.
+- Choose **Roll** to risk the turn score on the remaining dice.
+- Choose **Keep It** to bank an eligible turn and pass the dice.
+- Press <kbd>Space</kbd> to roll or <kbd>Enter</kbd> to set selected dice aside.
+
+## Joker controls
+
+- Click a card or press <kbd>1</kbd>-<kbd>5</kbd> to pass it.
+- Press <kbd>Space</kbd> or select **Slap the Table** to slap.
+- Use the settings menu to adjust sound and bot pacing.
+
+## Checks
+
+Run the collection integration checks from the repository root:
+
+```powershell
+godot --headless --path . --script tests/test_joker_launcher.gd
+godot --headless --path . --script tests/test_tenk_launcher.gd
+```
+
+Run Joker's checks from the same location:
+
+```powershell
+godot --headless --path . --script games/joker/tests/test_rules.gd
+godot --headless --path . --script games/joker/tests/test_deal.gd
+godot --headless --path . --script games/joker/tests/test_presentation.gd
+godot --headless --path . --script games/joker/tests/test_multiplayer_lobby.gd
+```
+
+Run 10,000's checks from the same location:
+
+```powershell
+godot --headless --path . --script games/tenk/tests/test_rules.gd
+godot --headless --path . --script games/tenk/tests/test_game_flow.gd
+```
 
 ## Adding a game
 
-1. Create `games/<game_name>/` with its own `scenes/`, `scripts/`, and `assets/` folders.
-2. Add the game's launcher logo to its assets folder.
-3. Replace or extend the placeholder entries in `GAMES` inside `launcher/scripts/main_menu.gd`.
-4. Route the launcher's `game_chosen` signal to the game's entry scene.
-
-Shared settings, audio, save data, and navigation services should be placed in `shared/` or `autoload/` as they are introduced.
+1. Create `games/<game_name>/` with its own scenes, scripts, resources, assets, and tests.
+2. Prefix globally registered `class_name` declarations, autoloads, input actions, and save files with the game's name.
+3. Put reusable tabletop artwork or systems under `shared/`.
+4. Add the game's name, logo, ID, and entry scene to `GAMES` in `launcher/scripts/main_menu.gd`.
+5. Add an integration check that launches the game and returns to Gamer Pub.

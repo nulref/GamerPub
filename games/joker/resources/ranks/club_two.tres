@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="JokerCardDefinition" format=3 uid="uid://bc4mvi6dtyuv8"]
+
+[ext_resource type="Script" uid="uid://c4gtkmp0p5dy3" path="res://games/joker/resources/card_definition.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://bfbn16mhfyduk" path="res://shared/assets/Cards/card_clubs_2.png" id="1_tpd03"]
+
+[resource]
+script = ExtResource("1")
+id = &"two"
+label = "2"
+accent = Color(0.306, 0.773, 0.988, 1)
+artwork = ExtResource("1_tpd03")

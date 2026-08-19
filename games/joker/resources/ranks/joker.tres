@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="JokerCardDefinition" format=3 uid="uid://04umy503me3p"]
+
+[ext_resource type="Script" uid="uid://c4gtkmp0p5dy3" path="res://games/joker/resources/card_definition.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://btkmhj0ug2le6" path="res://shared/assets/Cards/card_joker.png" id="1_y2ne7"]
+
+[resource]
+script = ExtResource("1")
+id = &"joker"
+label = "J"
+accent = Color(0.98, 0.318, 0.392, 1)
+is_joker = true
+artwork = ExtResource("1_y2ne7")

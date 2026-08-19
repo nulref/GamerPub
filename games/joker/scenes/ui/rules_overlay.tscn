@@ -1,0 +1,136 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://games/joker/scripts/rules_overlay.gd" id="1_rules"]
+
+[sub_resource type="StyleBoxFlat" id="OverlayPanel"]
+bg_color = Color(0.055, 0.082, 0.118, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.945, 0.63, 0.145, 0.8)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 18
+
+[sub_resource type="StyleBoxFlat" id="ButtonGold"]
+bg_color = Color(0.945, 0.63, 0.145, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0, 0, 0.3)
+shadow_size = 6
+shadow_offset = Vector2(0, 4)
+
+[sub_resource type="StyleBoxFlat" id="ButtonGoldHover"]
+bg_color = Color(1, 0.746, 0.25, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0.98, 0.72, 0.2, 0.32)
+shadow_size = 10
+
+[node name="RulesOverlay" type="Control"]
+visible = false
+z_index = 100
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_rules")
+
+[node name="Shade" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.01, 0.02, 0.035, 0.9)
+
+[node name="ScreenMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="Center" type="CenterContainer" parent="ScreenMargin"]
+layout_mode = 2
+
+[node name="Panel" type="PanelContainer" parent="ScreenMargin/Center"]
+custom_minimum_size = Vector2(600, 640)
+layout_mode = 2
+theme_override_styles/panel = SubResource("OverlayPanel")
+
+[node name="Margin" type="MarginContainer" parent="ScreenMargin/Center/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 26
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 26
+
+[node name="Column" type="VBoxContainer" parent="ScreenMargin/Center/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="ScreenMargin/Center/Panel/Margin/Column"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.945, 0.63, 0.145, 1)
+theme_override_font_sizes/font_size = 28
+text = "RULES"
+horizontal_alignment = 1
+
+[node name="Tagline" type="Label" parent="ScreenMargin/Center/Panel/Margin/Column"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.79, 0.86, 0.91, 1)
+theme_override_font_sizes/font_size = 18
+text = "Match the cards and hit the table."
+horizontal_alignment = 1
+
+[node name="Body" type="RichTextLabel" parent="ScreenMargin/Center/Panel/Margin/Column"]
+custom_minimum_size = Vector2(0, 380)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/default_color = Color(0.79, 0.86, 0.91, 1)
+theme_override_colors/font_selected_color = Color(0.09, 0.075, 0.035, 1)
+theme_override_colors/selection_color = Color(0.945, 0.63, 0.145, 0.9)
+theme_override_font_sizes/normal_font_size = 16
+theme_override_font_sizes/bold_font_size = 16
+bbcode_enabled = true
+text = "Seventeen cards are divided among four players. On each turn, pass one card to the player on your right.\n\nThe first player to complete a set and slap the table wins the round.\n\n[b]THREE KINDS OF SETS[/b]\n• Four cards of the same number.\n• Three cards of the same number plus the Joker.\n• Four cards of the same number plus the Joker.\n\n[b]WHEN SOMEONE SLAPS[/b]\nSlap the table fast or you may get a letter:\n• Four of a kind: the last player to slap gets a letter.\n• Three plus the Joker: the last two players get a letter.\n• Four plus the Joker: everyone except the winner gets a letter.\n\nThe first player to spell JOKER loses the game."
+fit_content = false
+scroll_active = true
+
+[node name="Reminder" type="Label" parent="ScreenMargin/Center/Panel/Margin/Column"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.945, 0.63, 0.145, 1)
+theme_override_font_sizes/font_size = 16
+text = "Remember: this isn't about winning. It's about not being the Joker."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="CloseRulesButton" type="Button" parent="ScreenMargin/Center/Panel/Margin/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.09, 0.075, 0.035, 1)
+theme_override_colors/font_hover_color = Color(0.09, 0.075, 0.035, 1)
+theme_override_colors/font_focus_color = Color(0.09, 0.075, 0.035, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("ButtonGold")
+theme_override_styles/hover = SubResource("ButtonGoldHover")
+theme_override_styles/focus = SubResource("ButtonGoldHover")
+text = "GOT IT"

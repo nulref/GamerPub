@@ -1,0 +1,633 @@
+[gd_scene format=3 uid="uid://c14iqxct7eyh6"]
+
+[ext_resource type="Script" uid="uid://df1wuhpmolynj" path="res://games/joker/scripts/game.gd" id="1_lbhrr"]
+[ext_resource type="Script" uid="uid://b21ymsyapcvb1" path="res://games/joker/scripts/game_controller.gd" id="2_iywne"]
+[ext_resource type="Script" uid="uid://csqlvod28n3rv" path="res://games/joker/scripts/audio_manager.gd" id="3_p57ef"]
+[ext_resource type="AudioStream" uid="uid://cla1vfprbbj5d" path="res://games/joker/assets/audio/slap.wav" id="4_u5sy4"]
+[ext_resource type="PackedScene" path="res://games/joker/scenes/ui/waiting_overlay.tscn" id="5_lobby"]
+[ext_resource type="PackedScene" path="res://games/joker/scenes/ui/rules_overlay.tscn" id="6_rules"]
+
+[sub_resource type="Animation" id="AnimationReset"]
+resource_name = "RESET"
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("MainMargin/MainColumn/TablePanel:modulate")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Color(1, 1, 1, 1)]
+}
+
+[sub_resource type="Animation" id="AnimationSlap"]
+resource_name = "slap_flash"
+length = 0.32
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("MainMargin/MainColumn/TablePanel:modulate")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.08, 0.32),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Color(1, 1, 1, 1), Color(1.35, 0.74, 0.62, 1), Color(1, 1, 1, 1)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibraryMain"]
+_data = {
+&"RESET": SubResource("AnimationReset"),
+&"slap_flash": SubResource("AnimationSlap")
+}
+
+[sub_resource type="StyleBoxFlat" id="ButtonQuiet"]
+bg_color = Color(0.11, 0.17, 0.235, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.43, 0.54, 0.8)
+corner_radius_top_left = 9
+corner_radius_top_right = 9
+corner_radius_bottom_right = 9
+corner_radius_bottom_left = 9
+
+[sub_resource type="StyleBoxFlat" id="PanelDark"]
+bg_color = Color(0.055, 0.092, 0.137, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.26, 0.39, 0.49, 0.6)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="PanelTable"]
+bg_color = Color(0.035, 0.31, 0.245, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.35, 0.72, 0.59, 0.6)
+corner_radius_top_left = 28
+corner_radius_top_right = 28
+corner_radius_bottom_right = 28
+corner_radius_bottom_left = 28
+shadow_color = Color(0, 0, 0, 0.35)
+shadow_size = 12
+
+[sub_resource type="StyleBoxFlat" id="ButtonGold"]
+bg_color = Color(0.945, 0.63, 0.145, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0, 0, 0.3)
+shadow_size = 6
+shadow_offset = Vector2(0, 4)
+
+[sub_resource type="StyleBoxFlat" id="ButtonGoldHover"]
+bg_color = Color(1, 0.746, 0.25, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0.98, 0.72, 0.2, 0.32)
+shadow_size = 10
+
+[sub_resource type="StyleBoxFlat" id="OverlayPanel"]
+bg_color = Color(0.055, 0.082, 0.118, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.945, 0.63, 0.145, 0.8)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 18
+
+[node name="Game" type="Control" unique_id=1951623349]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_lbhrr")
+
+[node name="Background" type="ColorRect" parent="." unique_id=289261069]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.025, 0.047, 0.075, 1)
+
+[node name="GameController" type="Node" parent="." unique_id=1086308686]
+unique_name_in_owner = true
+script = ExtResource("2_iywne")
+
+[node name="AudioManager" type="AudioStreamPlayer" parent="." unique_id=679433044]
+unique_name_in_owner = true
+script = ExtResource("3_p57ef")
+slap_sound = ExtResource("4_u5sy4")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=2084974356]
+unique_name_in_owner = true
+libraries/ = SubResource("AnimationLibraryMain")
+
+[node name="MainMargin" type="MarginContainer" parent="." unique_id=1961668786]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 22
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 22
+
+[node name="MainColumn" type="VBoxContainer" parent="MainMargin" unique_id=1019795077]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Header" type="HBoxContainer" parent="MainMargin/MainColumn" unique_id=377993731]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Branded" type="Label" parent="MainMargin/MainColumn/Header" unique_id=1106277717]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.945, 0.63, 0.145, 1)
+theme_override_font_sizes/font_size = 30
+text = "JOKER"
+
+[node name="Subtitle" type="Label" parent="MainMargin/MainColumn/Header" unique_id=1250975782]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.58, 0.69, 0.78, 1)
+theme_override_font_sizes/font_size = 14
+text = "Don't be a Joker!"
+vertical_alignment = 1
+
+[node name="RoundLabel" type="Label" parent="MainMargin/MainColumn/Header" unique_id=517316074]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.79, 0.86, 0.91, 1)
+theme_override_font_sizes/font_size = 16
+text = "ROUND 1"
+vertical_alignment = 1
+
+[node name="SettingsButton" type="Button" parent="MainMargin/MainColumn/Header" unique_id=1941781011]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(108, 40)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.79, 0.86, 0.91, 1)
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("ButtonQuiet")
+theme_override_styles/hover = SubResource("PanelDark")
+text = "SETTINGS"
+
+[node name="RulesButton" type="Button" parent="MainMargin/MainColumn/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(108, 40)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.79, 0.86, 0.91, 1)
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("ButtonQuiet")
+theme_override_styles/hover = SubResource("PanelDark")
+text = "RULES"
+
+[node name="Opponents" type="HBoxContainer" parent="MainMargin/MainColumn" unique_id=966909648]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Opponent1" type="PanelContainer" parent="MainMargin/MainColumn/Opponents" unique_id=1984243865]
+custom_minimum_size = Vector2(0, 94)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("PanelDark")
+
+[node name="Margin" type="MarginContainer" parent="MainMargin/MainColumn/Opponents/Opponent1" unique_id=71173958]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 10
+
+[node name="Column" type="VBoxContainer" parent="MainMargin/MainColumn/Opponents/Opponent1/Margin" unique_id=1996843692]
+layout_mode = 2
+
+[node name="Opponent1Name" type="Label" parent="MainMargin/MainColumn/Opponents/Opponent1/Margin/Column" unique_id=419814312]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Kramer"
+
+[node name="Opponent1Count" type="Label" parent="MainMargin/MainColumn/Opponents/Opponent1/Margin/Column" unique_id=1508495995]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.69, 0.78, 1)
+theme_override_font_sizes/font_size = 13
+text = "CARDS  4"
+
+[node name="Opponent1Score" type="Label" parent="MainMargin/MainColumn/Opponents/Opponent1/Margin/Column" unique_id=1782561812]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.945, 0.63, 0.145, 1)
+theme_override_font_sizes/font_size = 13
+text = "LETTERS  —"
+
+[node name="Opponent2" type="PanelContainer" parent="MainMargin/MainColumn/Opponents" unique_id=645055132]
+custom_minimum_size = Vector2(0, 94)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("PanelDark")
+
+[node name="Margin" type="MarginContainer" parent="MainMargin/MainColumn/Opponents/Opponent2" unique_id=349354388]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 10
+
+[node name="Column" type="VBoxContainer" parent="MainMargin/MainColumn/Opponents/Opponent2/Margin" unique_id=763900849]
+layout_mode = 2
+
+[node name="Opponent2Name" type="Label" parent="MainMargin/MainColumn/Opponents/Opponent2/Margin/Column" unique_id=2101935231]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "George"
+
+[node name="Opponent2Count" type="Label" parent="MainMargin/MainColumn/Opponents/Opponent2/Margin/Column" unique_id=1653824795]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.69, 0.78, 1)
+theme_override_font_sizes/font_size = 13
+text = "CARDS  4"
+
+[node name="Opponent2Score" type="Label" parent="MainMargin/MainColumn/Opponents/Opponent2/Margin/Column" unique_id=373370481]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.945, 0.63, 0.145, 1)
+theme_override_font_sizes/font_size = 13
+text = "LETTERS  —"
+
+[node name="Opponent3" type="PanelContainer" parent="MainMargin/MainColumn/Opponents" unique_id=1106776312]
+custom_minimum_size = Vector2(0, 94)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("PanelDark")
+
+[node name="Margin" type="MarginContainer" parent="MainMargin/MainColumn/Opponents/Opponent3" unique_id=1866554062]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 10
+
+[node name="Column" type="VBoxContainer" parent="MainMargin/MainColumn/Opponents/Opponent3/Margin" unique_id=1652204405]
+layout_mode = 2
+
+[node name="Opponent3Name" type="Label" parent="MainMargin/MainColumn/Opponents/Opponent3/Margin/Column" unique_id=571755659]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Elaine"
+
+[node name="Opponent3Count" type="Label" parent="MainMargin/MainColumn/Opponents/Opponent3/Margin/Column" unique_id=361984253]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.69, 0.78, 1)
+theme_override_font_sizes/font_size = 13
+text = "CARDS  4"
+
+[node name="Opponent3Score" type="Label" parent="MainMargin/MainColumn/Opponents/Opponent3/Margin/Column" unique_id=1974450205]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.945, 0.63, 0.145, 1)
+theme_override_font_sizes/font_size = 13
+text = "LETTERS  —"
+
+[node name="TablePanel" type="PanelContainer" parent="MainMargin/MainColumn" unique_id=518880500]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 218)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("PanelTable")
+
+[node name="Margin" type="MarginContainer" parent="MainMargin/MainColumn/TablePanel" unique_id=854849251]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 14
+
+[node name="Column" type="VBoxContainer" parent="MainMargin/MainColumn/TablePanel/Margin" unique_id=1746056626]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="StatusLabel" type="Label" parent="MainMargin/MainColumn/TablePanel/Margin/Column" unique_id=804677502]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "Shuffle up…"
+horizontal_alignment = 1
+
+[node name="SlapOrder" type="HBoxContainer" parent="MainMargin/MainColumn/TablePanel/Margin/Column" unique_id=462490178]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="SlapPlace1" type="Label" parent="MainMargin/MainColumn/TablePanel/Margin/Column/SlapOrder" unique_id=1845343161]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 32)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.73, 0.86, 0.78, 1)
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SlapPlace2" type="Label" parent="MainMargin/MainColumn/TablePanel/Margin/Column/SlapOrder" unique_id=360470558]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 32)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.73, 0.86, 0.78, 1)
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SlapPlace3" type="Label" parent="MainMargin/MainColumn/TablePanel/Margin/Column/SlapOrder" unique_id=1752467468]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 32)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.73, 0.86, 0.78, 1)
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SlapPlace4" type="Label" parent="MainMargin/MainColumn/TablePanel/Margin/Column/SlapOrder" unique_id=1242958479]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 32)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.73, 0.86, 0.78, 1)
+text = "—"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="SlapButton" type="Button" parent="MainMargin/MainColumn/TablePanel/Margin/Column" unique_id=221754037]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.09, 0.075, 0.035, 1)
+theme_override_colors/font_hover_color = Color(0.09, 0.075, 0.035, 1)
+theme_override_font_sizes/font_size = 24
+theme_override_styles/normal = SubResource("ButtonGold")
+theme_override_styles/pressed = SubResource("ButtonGold")
+theme_override_styles/hover = SubResource("ButtonGoldHover")
+text = "SLAP THE TABLE   [ SPACE ]"
+
+[node name="RuleHint" type="Label" parent="MainMargin/MainColumn/TablePanel/Margin/Column" unique_id=1807324352]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.79, 0.7, 1)
+theme_override_font_sizes/font_size = 12
+text = "4 MATCHING  ·  3 + JOKER  ·  4 + JOKER"
+horizontal_alignment = 1
+
+[node name="HumanPanel" type="PanelContainer" parent="MainMargin/MainColumn" unique_id=1307106407]
+custom_minimum_size = Vector2(0, 192)
+layout_mode = 2
+theme_override_styles/panel = SubResource("PanelDark")
+
+[node name="Margin" type="MarginContainer" parent="MainMargin/MainColumn/HumanPanel" unique_id=109888773]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 12
+
+[node name="Column" type="VBoxContainer" parent="MainMargin/MainColumn/HumanPanel/Margin" unique_id=20120964]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HumanHeader" type="HBoxContainer" parent="MainMargin/MainColumn/HumanPanel/Margin/Column" unique_id=972911752]
+layout_mode = 2
+
+[node name="YouLabel" type="Label" parent="MainMargin/MainColumn/HumanPanel/Margin/Column/HumanHeader" unique_id=2139314379]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+text = "YOUR HAND"
+
+[node name="ScoreLabel" type="Label" parent="MainMargin/MainColumn/HumanPanel/Margin/Column/HumanHeader" unique_id=147339170]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.945, 0.63, 0.145, 1)
+theme_override_font_sizes/font_size = 15
+text = "YOUR LETTERS  —"
+
+[node name="HandCenter" type="CenterContainer" parent="MainMargin/MainColumn/HumanPanel/Margin/Column" unique_id=2143857843]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="HandContainer" type="HBoxContainer" parent="MainMargin/MainColumn/HumanPanel/Margin/Column/HandCenter" unique_id=385871606]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ResultOverlay" type="Control" parent="." unique_id=568154851]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Shade" type="ColorRect" parent="ResultOverlay" unique_id=226254574]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.01, 0.02, 0.035, 0.82)
+
+[node name="Center" type="CenterContainer" parent="ResultOverlay" unique_id=797283382]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="ResultOverlay/Center" unique_id=1642625674]
+custom_minimum_size = Vector2(550, 330)
+layout_mode = 2
+theme_override_styles/panel = SubResource("OverlayPanel")
+
+[node name="Margin" type="MarginContainer" parent="ResultOverlay/Center/Panel" unique_id=1940051607]
+layout_mode = 2
+theme_override_constants/margin_left = 34
+theme_override_constants/margin_top = 30
+theme_override_constants/margin_right = 34
+theme_override_constants/margin_bottom = 30
+
+[node name="Column" type="VBoxContainer" parent="ResultOverlay/Center/Panel/Margin" unique_id=896862758]
+layout_mode = 2
+theme_override_constants/separation = 22
+
+[node name="ResultTitle" type="Label" parent="ResultOverlay/Center/Panel/Margin/Column" unique_id=683573779]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.945, 0.63, 0.145, 1)
+theme_override_font_sizes/font_size = 28
+text = "ROUND COMPLETE"
+horizontal_alignment = 1
+
+[node name="ResultBody" type="Label" parent="ResultOverlay/Center/Panel/Margin/Column" unique_id=1018141186]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.79, 0.86, 0.91, 1)
+theme_override_font_sizes/font_size = 16
+text = "Round details"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="NextRoundButton" type="Button" parent="ResultOverlay/Center/Panel/Margin/Column" unique_id=1172504176]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.09, 0.075, 0.035, 1)
+theme_override_colors/font_hover_color = Color(0.09, 0.075, 0.035, 1)
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("ButtonGold")
+theme_override_styles/hover = SubResource("ButtonGoldHover")
+text = "NEXT ROUND"
+
+[node name="SettingsOverlay" type="Control" parent="." unique_id=281611144]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Shade" type="ColorRect" parent="SettingsOverlay" unique_id=1263320371]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.01, 0.02, 0.035, 0.82)
+
+[node name="Center" type="CenterContainer" parent="SettingsOverlay" unique_id=25156235]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="SettingsOverlay/Center" unique_id=484119329]
+custom_minimum_size = Vector2(470, 370)
+layout_mode = 2
+theme_override_styles/panel = SubResource("OverlayPanel")
+
+[node name="Margin" type="MarginContainer" parent="SettingsOverlay/Center/Panel" unique_id=593626927]
+layout_mode = 2
+theme_override_constants/margin_left = 34
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 34
+theme_override_constants/margin_bottom = 28
+
+[node name="Column" type="VBoxContainer" parent="SettingsOverlay/Center/Panel/Margin" unique_id=1023491027]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Title" type="Label" parent="SettingsOverlay/Center/Panel/Margin/Column" unique_id=505769234]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.945, 0.63, 0.145, 1)
+theme_override_font_sizes/font_size = 26
+text = "SETTINGS"
+
+[node name="SoundToggle" type="CheckButton" parent="SettingsOverlay/Center/Panel/Margin/Column" unique_id=1951426160]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "Sound effects"
+
+[node name="SpeedHeader" type="HBoxContainer" parent="SettingsOverlay/Center/Panel/Margin/Column" unique_id=644646014]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SettingsOverlay/Center/Panel/Margin/Column/SpeedHeader" unique_id=480033614]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 17
+text = "Bot pace"
+
+[node name="BotSpeedValue" type="Label" parent="SettingsOverlay/Center/Panel/Margin/Column/SpeedHeader" unique_id=327918539]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.306, 0.773, 0.988, 1)
+text = "NORMAL"
+
+[node name="BotSpeedSlider" type="HSlider" parent="SettingsOverlay/Center/Panel/Margin/Column" unique_id=702604703]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 0.65
+max_value = 1.6
+step = 0.05
+value = 1.0
+
+[node name="CloseSettingsButton" type="Button" parent="SettingsOverlay/Center/Panel/Margin/Column" unique_id=2125679684]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.09, 0.075, 0.035, 1)
+theme_override_colors/font_hover_color = Color(0.09, 0.075, 0.035, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("ButtonGold")
+theme_override_styles/hover = SubResource("ButtonGoldHover")
+text = "SAVE & CLOSE"
+
+[node name="MainMenuButton" type="Button" parent="SettingsOverlay/Center/Panel/Margin/Column" unique_id=1487250812]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+tooltip_text = "Ends current game and quits to main menu."
+theme_override_colors/font_color = Color(0.09, 0.075, 0.035, 1)
+theme_override_colors/font_hover_color = Color(0.09, 0.075, 0.035, 1)
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("ButtonGold")
+theme_override_styles/hover = SubResource("ButtonGoldHover")
+text = "MAIN MENU"
+
+[node name="WaitingOverlay" parent="." instance=ExtResource("5_lobby")]
+unique_name_in_owner = true
+
+[node name="RulesOverlay" parent="." instance=ExtResource("6_rules")]
+unique_name_in_owner = true

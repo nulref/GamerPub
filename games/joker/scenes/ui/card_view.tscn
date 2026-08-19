@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://cu4jx3couh7t6"]
+
+[ext_resource type="Script" uid="uid://dg3ousgetpdxx" path="res://games/joker/scripts/card_view.gd" id="1"]
+
+[sub_resource type="StyleBoxFlat" id="CardHover"]
+bg_color = Color(1, 1, 1, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.306, 0.773, 0.988, 0.9)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0.122, 0.62, 0.9, 0.3)
+shadow_size = 10
+shadow_offset = Vector2(0, 4)
+
+[node name="CardView" type="Button" unique_id=409543594]
+custom_minimum_size = Vector2(112, 151)
+mouse_default_cursor_shape = 2
+theme_override_font_sizes/font_size = 44
+theme_override_styles/pressed = SubResource("CardHover")
+theme_override_styles/hover = SubResource("CardHover")
+icon_alignment = 1
+expand_icon = true
+script = ExtResource("1")

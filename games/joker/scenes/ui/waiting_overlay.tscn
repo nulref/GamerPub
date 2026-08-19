@@ -1,0 +1,167 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://games/joker/scripts/waiting_overlay.gd" id="1"]
+
+[sub_resource type="StyleBoxFlat" id="Panel"]
+bg_color = Color(0.055, 0.082, 0.118, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.945, 0.63, 0.145, 0.8)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0, 0, 0, 0.55)
+shadow_size = 20
+
+[sub_resource type="StyleBoxFlat" id="Gold"]
+bg_color = Color(0.945, 0.63, 0.145, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="Quiet"]
+bg_color = Color(0.11, 0.17, 0.235, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.3, 0.43, 0.54, 0.8)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[node name="WaitingOverlay" type="Control"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Shade" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.01, 0.02, 0.035, 0.88)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Center"]
+custom_minimum_size = Vector2(650, 590)
+layout_mode = 2
+theme_override_styles/panel = SubResource("Panel")
+
+[node name="Margin" type="MarginContainer" parent="Center/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 34
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 34
+theme_override_constants/margin_bottom = 28
+
+[node name="Column" type="VBoxContainer" parent="Center/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="Center/Panel/Margin/Column"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.945, 0.63, 0.145, 1)
+theme_override_font_sizes/font_size = 28
+text = "MULTIPLAYER LOBBY"
+horizontal_alignment = 1
+
+[node name="LobbyStatus" type="Label" parent="Center/Panel/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.82, 0.89, 1)
+theme_override_font_sizes/font_size = 15
+text = "Connecting to this Discord Activity..."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="NameRow" type="HBoxContainer" parent="Center/Panel/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PlayerNameEdit" type="LineEdit" parent="Center/Panel/Margin/Column/NameRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 46)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Player name"
+max_length = 32
+
+[node name="ApplyNameButton" type="Button" parent="Center/Panel/Margin/Column/NameRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 46)
+layout_mode = 2
+theme_override_styles/normal = SubResource("Quiet")
+text = "UPDATE"
+
+[node name="Seats" type="VBoxContainer" parent="Center/Panel/Margin/Column"]
+custom_minimum_size = Vector2(0, 176)
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="Seat1" type="Label" parent="Center/Panel/Margin/Column/Seats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "1.  Waiting for player..."
+
+[node name="Seat2" type="Label" parent="Center/Panel/Margin/Column/Seats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "2.  Waiting for player..."
+
+[node name="Seat3" type="Label" parent="Center/Panel/Margin/Column/Seats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "3.  Waiting for player..."
+
+[node name="Seat4" type="Label" parent="Center/Panel/Margin/Column/Seats"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "4.  Waiting for player..."
+
+[node name="ReadyButton" type="Button" parent="Center/Panel/Margin/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.09, 0.075, 0.035, 1)
+theme_override_styles/normal = SubResource("Gold")
+text = "I'M READY"
+
+[node name="StartGameButton" type="Button" parent="Center/Panel/Margin/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.09, 0.075, 0.035, 1)
+theme_override_styles/normal = SubResource("Gold")
+text = "START GAME"
+
+[node name="CancelLobbyButton" type="Button" parent="Center/Panel/Margin/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_styles/normal = SubResource("Quiet")
+text = "BACK TO MAIN MENU"

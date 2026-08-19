@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="JokerCardDefinition" format=3 uid="uid://uring8panrjx"]
+
+[ext_resource type="Script" uid="uid://c4gtkmp0p5dy3" path="res://games/joker/resources/card_definition.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://dm1sqc38pwqkf" path="res://shared/assets/Cards/card_spade_1.png" id="1_g287s"]
+
+[resource]
+script = ExtResource("1")
+id = &"ace"
+label = "A"
+accent = Color(0.973, 0.761, 0.286, 1)
+artwork = ExtResource("1_g287s")

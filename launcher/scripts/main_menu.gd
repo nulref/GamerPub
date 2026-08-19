@@ -4,6 +4,8 @@ signal game_chosen(game_id: StringName)
 
 const GAME_CARD_SCRIPT := preload("res://launcher/scripts/game_card.gd")
 const GAME_LOGO := preload("res://launcher/assets/art/gp_logo.webp")
+const JOKER_LOGO := preload("res://games/joker/assets/art/joker.png")
+const TENK_LOGO := preload("res://shared/assets/Dice/die_red_1.png")
 
 const MAX_VISIBLE_CARDS := 6
 const MIN_CARD_WIDTH := 168.0
@@ -11,11 +13,21 @@ const CARD_HEIGHT := 210.0
 const CARD_GAP := 16
 const TRACK_PADDING := 14
 
-# Replace each placeholder name and logo as real games are added. The carousel
+# Replace each remaining placeholder as real games are added. The carousel
 # automatically supports any number of entries while showing at most six.
 const GAMES: Array[Dictionary] = [
-	{"id": &"game_01", "name": "Game 01", "logo": GAME_LOGO},
-	{"id": &"game_02", "name": "Game 02", "logo": GAME_LOGO},
+	{
+		"id": &"joker",
+		"name": "Joker",
+		"logo": JOKER_LOGO,
+		"scene": "res://games/joker/scenes/main_menu.tscn",
+	},
+	{
+		"id": &"tenk",
+		"name": "10,000",
+		"logo": TENK_LOGO,
+		"scene": "res://games/tenk/scenes/game.tscn",
+	},
 	{"id": &"game_03", "name": "Game 03", "logo": GAME_LOGO},
 	{"id": &"game_04", "name": "Game 04", "logo": GAME_LOGO},
 	{"id": &"game_05", "name": "Game 05", "logo": GAME_LOGO},
@@ -146,9 +158,15 @@ func _on_game_selected(game_id: StringName) -> void:
 	for game in GAMES:
 		if game.id == game_id:
 			selection_status.text = "%s selected" % game.name
-			break
-
-	game_chosen.emit(game_id)
+			game_chosen.emit(game_id)
+			var scene_path := String(game.get("scene", ""))
+			if scene_path.is_empty():
+				return
+			var error := get_tree().change_scene_to_file(scene_path)
+			if error != OK:
+				selection_status.text = "Unable to launch %s" % game.name
+				push_error("Unable to launch %s (%s): error %d" % [game.name, scene_path, error])
+			return
 
 
 func _setup_arrow_button(button: Button) -> void:

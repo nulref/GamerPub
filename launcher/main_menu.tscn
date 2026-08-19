@@ -1,7 +1,7 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://byvq2pjrmcg10"]
 
-[ext_resource type="Texture2D" path="res://launcher/assets/art/main_menu_bg.png" id="1_bg"]
-[ext_resource type="Script" path="res://launcher/scripts/main_menu.gd" id="2_script"]
+[ext_resource type="Texture2D" uid="uid://v2hhmjtbjy3y" path="res://launcher/assets/art/main_menu_bg.png" id="1_bg"]
+[ext_resource type="Script" uid="uid://ivjct0td76ei" path="res://launcher/scripts/main_menu.gd" id="2_script"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_carousel"]
 bg_color = Color(0.035, 0.016, 0.06, 0.66)
@@ -18,7 +18,7 @@ shadow_color = Color(0.015, 0.008, 0.025, 0.62)
 shadow_size = 16
 shadow_offset = Vector2(0, 8)
 
-[node name="MainMenu" type="Control"]
+[node name="MainMenu" type="Control" unique_id=1720994805]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -27,7 +27,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("2_script")
 
-[node name="Background" type="TextureRect" parent="."]
+[node name="Background" type="TextureRect" parent="." unique_id=591917998]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -39,7 +39,7 @@ texture = ExtResource("1_bg")
 expand_mode = 1
 stretch_mode = 6
 
-[node name="BackdropTint" type="ColorRect" parent="."]
+[node name="BackdropTint" type="ColorRect" parent="." unique_id=1669354190]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -49,7 +49,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.035, 0.015, 0.07, 0.24)
 
-[node name="ScreenMargin" type="MarginContainer" parent="."]
+[node name="ScreenMargin" type="MarginContainer" parent="." unique_id=1980546250]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -61,17 +61,17 @@ theme_override_constants/margin_top = 34
 theme_override_constants/margin_right = 54
 theme_override_constants/margin_bottom = 34
 
-[node name="MainLayout" type="VBoxContainer" parent="ScreenMargin"]
+[node name="MainLayout" type="VBoxContainer" parent="ScreenMargin" unique_id=387305047]
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="Header" type="VBoxContainer" parent="ScreenMargin/MainLayout"]
+[node name="Header" type="VBoxContainer" parent="ScreenMargin/MainLayout" unique_id=293179069]
 custom_minimum_size = Vector2(0, 155)
 layout_mode = 2
-alignment = 1
 theme_override_constants/separation = 2
+alignment = 1
 
-[node name="Title" type="Label" parent="ScreenMargin/MainLayout/Header"]
+[node name="Title" type="Label" parent="ScreenMargin/MainLayout/Header" unique_id=1777634312]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.82, 0.38, 1)
 theme_override_colors/font_shadow_color = Color(0.08, 0.025, 0.08, 0.95)
@@ -83,7 +83,7 @@ theme_override_font_sizes/font_size = 72
 text = "Gamer Pub"
 horizontal_alignment = 1
 
-[node name="Subtitle" type="Label" parent="ScreenMargin/MainLayout/Header"]
+[node name="Subtitle" type="Label" parent="ScreenMargin/MainLayout/Header" unique_id=109950170]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.94, 0.78, 1)
 theme_override_colors/font_shadow_color = Color(0.07, 0.025, 0.08, 0.95)
@@ -93,42 +93,42 @@ theme_override_font_sizes/font_size = 27
 text = "Please Select A Game"
 horizontal_alignment = 1
 
-[node name="FlexibleSpacer" type="Control" parent="ScreenMargin/MainLayout"]
+[node name="FlexibleSpacer" type="Control" parent="ScreenMargin/MainLayout" unique_id=1434726876]
 layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
 
-[node name="SelectionArea" type="VBoxContainer" parent="ScreenMargin/MainLayout"]
+[node name="SelectionArea" type="VBoxContainer" parent="ScreenMargin/MainLayout" unique_id=1195131846]
 custom_minimum_size = Vector2(0, 300)
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="CarouselShell" type="PanelContainer" parent="ScreenMargin/MainLayout/SelectionArea"]
+[node name="CarouselShell" type="PanelContainer" parent="ScreenMargin/MainLayout/SelectionArea" unique_id=1715552455]
 custom_minimum_size = Vector2(0, 250)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBox_carousel")
 
-[node name="CarouselMargin" type="MarginContainer" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell"]
+[node name="CarouselMargin" type="MarginContainer" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell" unique_id=1054976889]
 layout_mode = 2
 theme_override_constants/margin_left = 18
 theme_override_constants/margin_top = 4
 theme_override_constants/margin_right = 18
 theme_override_constants/margin_bottom = 4
 
-[node name="CarouselRow" type="HBoxContainer" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin"]
+[node name="CarouselRow" type="HBoxContainer" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin" unique_id=1736106698]
 layout_mode = 2
 theme_override_constants/separation = 14
 alignment = 1
 
-[node name="PreviousButton" type="Button" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow"]
+[node name="PreviousButton" type="Button" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow" unique_id=1476229102]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(58, 76)
 layout_mode = 2
+tooltip_text = "Previous game"
 theme_override_font_sizes/font_size = 46
 text = "‹"
-tooltip_text = "Previous game"
 
-[node name="CardScroll" type="ScrollContainer" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow"]
+[node name="CardScroll" type="ScrollContainer" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow" unique_id=703173632]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 240)
 layout_mode = 2
@@ -136,31 +136,31 @@ size_flags_horizontal = 3
 horizontal_scroll_mode = 3
 vertical_scroll_mode = 0
 
-[node name="CardsMargin" type="MarginContainer" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow/CardScroll"]
+[node name="CardsMargin" type="MarginContainer" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow/CardScroll" unique_id=1271344901]
 layout_mode = 2
 theme_override_constants/margin_left = 14
 theme_override_constants/margin_top = 14
 theme_override_constants/margin_right = 14
 theme_override_constants/margin_bottom = 14
 
-[node name="Cards" type="HBoxContainer" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow/CardScroll/CardsMargin"]
+[node name="Cards" type="HBoxContainer" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow/CardScroll/CardsMargin" unique_id=1565204080]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="NextButton" type="Button" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow"]
+[node name="NextButton" type="Button" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow" unique_id=1109952300]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(58, 76)
 layout_mode = 2
+tooltip_text = "Next game"
 theme_override_font_sizes/font_size = 46
 text = "›"
-tooltip_text = "Next game"
 
-[node name="CarouselFooter" type="HBoxContainer" parent="ScreenMargin/MainLayout/SelectionArea"]
+[node name="CarouselFooter" type="HBoxContainer" parent="ScreenMargin/MainLayout/SelectionArea" unique_id=1784601948]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="SelectionStatus" type="Label" parent="ScreenMargin/MainLayout/SelectionArea/CarouselFooter"]
+[node name="SelectionStatus" type="Label" parent="ScreenMargin/MainLayout/SelectionArea/CarouselFooter" unique_id=1965712809]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -171,7 +171,7 @@ theme_override_constants/shadow_offset_y = 2
 theme_override_font_sizes/font_size = 17
 text = "Choose a game to continue"
 
-[node name="RangeLabel" type="Label" parent="ScreenMargin/MainLayout/SelectionArea/CarouselFooter"]
+[node name="RangeLabel" type="Label" parent="ScreenMargin/MainLayout/SelectionArea/CarouselFooter" unique_id=1966504996]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.91, 0.77, 0.57, 1)
