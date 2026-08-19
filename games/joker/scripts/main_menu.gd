@@ -21,9 +21,11 @@ var _bridge: Node
 func _ready() -> void:
 	_bridge = get_node("/root/JokerDiscordBridge")
 	_bridge.connect("shell_command_requested", _on_shell_command_requested)
+	_bridge.connect("context_changed", _on_discord_context_changed)
 	_apply_mobile_layout()
 	_connect_signals()
 	_load_settings()
+	_update_multiplayer_availability()
 
 
 func _apply_mobile_layout() -> void:
@@ -58,8 +60,27 @@ func _on_single_pressed() -> void:
 	get_tree().change_scene_to_file("res://games/joker/scenes/game.tscn")
 
 func _on_multi_pressed() -> void:
+	if OS.has_feature("web") and not bool(_bridge.call("is_discord_activity")):
+		return
 	get_node("/root/JokerDiscordBridge").call("begin_multiplayer")
 	get_tree().change_scene_to_file("res://games/joker/scenes/game.tscn")
+
+
+func _on_discord_context_changed(_context: Dictionary) -> void:
+	_update_multiplayer_availability()
+
+
+func _update_multiplayer_availability() -> void:
+	if not OS.has_feature("web"):
+		return
+	var discord_available := bool(_bridge.call("is_discord_activity"))
+	multi_player_button.disabled = not discord_available
+	multi_player_button.text = "MULTIPLAYER" if discord_available else "MULTIPLAYER (DISCORD ONLY)"
+	multi_player_button.tooltip_text = (
+		"Join the Discord Activity multiplayer room."
+		if discord_available
+		else "Discord multiplayer is unavailable on this standalone play-test page."
+	)
 
 func _load_settings() -> void:
 	_settings.load_from_disk()

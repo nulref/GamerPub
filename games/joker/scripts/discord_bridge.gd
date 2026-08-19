@@ -56,6 +56,10 @@ func current_user_id() -> String:
 	return String(user.get("id", ""))
 
 
+func is_discord_activity() -> bool:
+	return bool(activity_context.get("connected", false)) and not current_user_id().is_empty()
+
+
 func send_room_command(command: String, values: Dictionary = {}) -> void:
 	if not OS.has_feature("web"):
 		last_error = "Multiplayer is available inside the Discord Activity."

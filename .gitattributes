@@ -1,2 +1,6 @@
 # Normalize EOL for all files that Git considers text files.
 * text=auto eol=lf
+
+# Preserve generated Godot Web binaries byte-for-byte in Git.
+*.pck -text
+*.wasm -text

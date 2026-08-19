@@ -33,3 +33,7 @@ Desktop.ini
 *.tmp
 *.temp
 *~
+
+# The prebuilt single-threaded Web bundle is versioned for Netlify play tests.
+!/dist/
+!/dist/**

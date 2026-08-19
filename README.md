@@ -28,6 +28,9 @@ Joker supports local play against bots and retains its Discord multiplayer bridg
 ```text
 Gamer Pub/
 ├── project.godot
+├── export_presets.cfg              # Single-threaded browser export
+├── netlify.toml                    # Serves the committed Web build
+├── dist/                           # Versioned Netlify play-test bundle
 ├── launcher/
 │   ├── main_menu.tscn
 │   ├── scripts/
@@ -61,6 +64,24 @@ Game-specific files stay under `games/<game_name>/`. Assets and systems intentio
 4. Select **Joker** or **10,000** from the carousel.
 
 From Joker's menu, **Back to Gamer Pub** returns to the launcher.
+
+## Netlify play-test build
+
+The repository includes a single-threaded Godot Web preset and a prebuilt `dist/` bundle. Netlify serves that directory directly; it does not need Godot installed during deployment. Microphone access is explicitly disabled because the current play test has no voice communication.
+
+To refresh the browser bundle after changing the game, install the Godot 4.7.1 export templates and run:
+
+```powershell
+.\scripts\export_web.ps1
+```
+
+If Godot is not on `PATH`, pass its executable explicitly:
+
+```powershell
+.\scripts\export_web.ps1 -GodotPath "C:\path\to\Godot_v4.7.1-stable_win64.exe"
+```
+
+Commit the regenerated files in `dist/` before pushing. Joker multiplayer is disabled on the standalone Netlify build and becomes available only inside its Discord Activity wrapper; Joker single-player and 10,000 local hot-seat play remain available.
 
 ## 10,000 controls
 

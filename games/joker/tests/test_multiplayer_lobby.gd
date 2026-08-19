@@ -8,6 +8,13 @@ func _init() -> void:
 
 func _run() -> void:
 	var bridge := root.get_node("JokerDiscordBridge")
+	assert(not bridge.is_discord_activity())
+	bridge.activity_context = {
+		"connected": true,
+		"currentUser": {"id": "play-tester"},
+	}
+	assert(bridge.is_discord_activity())
+	bridge.activity_context.clear()
 	bridge.begin_multiplayer()
 	var packed_scene: PackedScene = load("res://games/joker/scenes/game.tscn")
 	var scene := packed_scene.instantiate()

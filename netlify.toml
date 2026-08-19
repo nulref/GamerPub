@@ -1,0 +1,12 @@
+[build]
+  publish = "dist"
+
+[build.processing]
+  skip_processing = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Permissions-Policy = "microphone=()"
+    X-Content-Type-Options = "nosniff"
