@@ -1,0 +1,183 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Texture2D" path="res://launcher/assets/art/main_menu_bg.png" id="1_bg"]
+[ext_resource type="Script" path="res://launcher/scripts/main_menu.gd" id="2_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_carousel"]
+bg_color = Color(0.035, 0.016, 0.06, 0.66)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.58, 0.36, 0.18, 0.72)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+shadow_color = Color(0.015, 0.008, 0.025, 0.62)
+shadow_size = 16
+shadow_offset = Vector2(0, 8)
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_script")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("1_bg")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="BackdropTint" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.035, 0.015, 0.07, 0.24)
+
+[node name="ScreenMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 54
+theme_override_constants/margin_top = 34
+theme_override_constants/margin_right = 54
+theme_override_constants/margin_bottom = 34
+
+[node name="MainLayout" type="VBoxContainer" parent="ScreenMargin"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Header" type="VBoxContainer" parent="ScreenMargin/MainLayout"]
+custom_minimum_size = Vector2(0, 155)
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="ScreenMargin/MainLayout/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.82, 0.38, 1)
+theme_override_colors/font_shadow_color = Color(0.08, 0.025, 0.08, 0.95)
+theme_override_colors/font_outline_color = Color(0.22, 0.07, 0.08, 1)
+theme_override_constants/shadow_offset_x = 4
+theme_override_constants/shadow_offset_y = 5
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 72
+text = "Gamer Pub"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="ScreenMargin/MainLayout/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.94, 0.78, 1)
+theme_override_colors/font_shadow_color = Color(0.07, 0.025, 0.08, 0.95)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 3
+theme_override_font_sizes/font_size = 27
+text = "Please Select A Game"
+horizontal_alignment = 1
+
+[node name="FlexibleSpacer" type="Control" parent="ScreenMargin/MainLayout"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="SelectionArea" type="VBoxContainer" parent="ScreenMargin/MainLayout"]
+custom_minimum_size = Vector2(0, 300)
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CarouselShell" type="PanelContainer" parent="ScreenMargin/MainLayout/SelectionArea"]
+custom_minimum_size = Vector2(0, 250)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBox_carousel")
+
+[node name="CarouselMargin" type="MarginContainer" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 4
+
+[node name="CarouselRow" type="HBoxContainer" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="PreviousButton" type="Button" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 76)
+layout_mode = 2
+theme_override_font_sizes/font_size = 46
+text = "‹"
+tooltip_text = "Previous game"
+
+[node name="CardScroll" type="ScrollContainer" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 240)
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_scroll_mode = 3
+vertical_scroll_mode = 0
+
+[node name="CardsMargin" type="MarginContainer" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow/CardScroll"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="Cards" type="HBoxContainer" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow/CardScroll/CardsMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="NextButton" type="Button" parent="ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 76)
+layout_mode = 2
+theme_override_font_sizes/font_size = 46
+text = "›"
+tooltip_text = "Next game"
+
+[node name="CarouselFooter" type="HBoxContainer" parent="ScreenMargin/MainLayout/SelectionArea"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="SelectionStatus" type="Label" parent="ScreenMargin/MainLayout/SelectionArea/CarouselFooter"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.91, 0.72, 1)
+theme_override_colors/font_shadow_color = Color(0.06, 0.02, 0.07, 0.9)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 17
+text = "Choose a game to continue"
+
+[node name="RangeLabel" type="Label" parent="ScreenMargin/MainLayout/SelectionArea/CarouselFooter"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.77, 0.57, 1)
+theme_override_colors/font_shadow_color = Color(0.06, 0.02, 0.07, 0.9)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 17
+text = "1–6 of 10"
+horizontal_alignment = 2

@@ -1,0 +1,35 @@
+# Godot-generated files
+/.godot/
+/.mono/
+/android/
+
+# Local export and build output
+/build/
+/builds/
+/dist/
+/exports/
+*.pck
+*.zip
+
+# Local environment and secret files
+.env
+.env.*
+!.env.example
+
+# Editor and IDE settings
+/.idea/
+/.vscode/
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*~
