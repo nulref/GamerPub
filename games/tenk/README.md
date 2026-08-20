@@ -13,7 +13,8 @@ This folder contains Gamer Pub's local hot-seat version of the six-die game 10,0
 - A straight scores 1,500.
 - Three pairs, four-of-a-kind plus a pair, and two triplets score 1,000.
 - When all six dice score, all six become available again ("and rolling" or hot dice).
-- Once per turn, before setting aside a score, a pair may be carried into one four-die "go for it" roll.
+- Once per turn, before setting aside a score, a pair may be carried into one "go for it" roll.
+- If that roll already contains a triple and a pair, both matching groups stay locked and only the sixth die is rerolled. Matching either group completes the 1,000-point special and is "and rolling."
 
 The supplied example where `4, 4` is followed by `4, 5, 5, 1` says both that the turn ends and that all-scoring dice are "and rolling." This implementation applies the general all-six-dice rule consistently, so that result scores 600 and is "and rolling."
 

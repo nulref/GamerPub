@@ -49,6 +49,16 @@ func _run() -> void:
 	game.turn_score = 50
 	assert(game._can_bank())
 
+	game.turn_score = 0
+	game.current_roll = [6, 5, 4, 4, 5, 5]
+	game.go_for_used = false
+	var go_for_plan: Dictionary = TenkRules.go_for_plans(game.current_roll)[0]
+	game._choose_go_for(go_for_plan)
+	assert(game.go_for_used)
+	assert(game.pending_go_for_plan.reroll_count == 1)
+	assert(game._dice_row.get_child_count() == 5)
+	assert(game._roll_button.text == "ROLL 1 DIE")
+
 	assert(game.find_child("BackToLauncherButton", true, false) != null)
 	assert(game.find_child("RulesOverlay", true, false) != null)
 	print("PASS: 10,000 game scene and opening-score flow")

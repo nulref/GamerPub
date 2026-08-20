@@ -21,7 +21,7 @@ var turn_score := 0
 var dice_to_roll := 6
 var current_roll: Array[int] = []
 var go_for_used := false
-var pending_go_for_face := 0
+var pending_go_for_plan: Dictionary = {}
 var awaiting_next_player := false
 var awaiting_go_for_choice := false
 var game_over := false
@@ -443,7 +443,7 @@ func _begin_turn() -> void:
 	dice_to_roll = 6
 	current_roll.clear()
 	go_for_used = false
-	pending_go_for_face = 0
+	pending_go_for_plan.clear()
 	awaiting_next_player = false
 	awaiting_go_for_choice = false
 	_clear_go_for_options()
@@ -457,7 +457,7 @@ func _begin_turn() -> void:
 
 
 func _on_roll_pressed() -> void:
-	if pending_go_for_face > 0:
+	if not pending_go_for_plan.is_empty():
 		_roll_go_for_dice()
 		return
 	if not current_roll.is_empty() or awaiting_next_player:
@@ -468,9 +468,9 @@ func _on_roll_pressed() -> void:
 	_show_dice(current_roll, true, best.indices)
 	_roll_detail_label.text = "Rolled: %s" % _dice_text(current_roll)
 	_roll_button.disabled = true
-	var options: Array[int] = []
+	var options: Array[Dictionary] = []
 	if turn_score == 0 and not go_for_used and dice_to_roll == 6:
-		options = RULES.go_for_options(current_roll)
+		options = RULES.go_for_plans(current_roll)
 
 	if best.score <= 0:
 		if options.is_empty():
@@ -544,33 +544,49 @@ func _on_keep_pressed() -> void:
 		_finish_scoring_turn("Kept it")
 
 
-func _choose_go_for(face: int) -> void:
+func _choose_go_for(plan: Dictionary) -> void:
 	go_for_used = true
-	pending_go_for_face = face
+	pending_go_for_plan = plan.duplicate(true)
 	awaiting_go_for_choice = false
 	current_roll.clear()
 	_clear_go_for_options()
-	_show_locked_pair(face)
-	var target := RULES.go_for_target_score(face)
-	_status_label.text = "Going for %s! Roll the other four dice." % _number(target)
-	_roll_detail_label.text = "Two %ds are locked. One more %d completes the set." % [face, face]
-	_selection_label.text = "The follow-up roll ends the turn unless all six dice score."
+	var locked_dice := _dictionary_int_array(plan, "locked_dice")
+	_show_locked_go_for_dice(locked_dice)
+	var face := int(plan.pair_face)
+	var target := int(plan.target_score)
+	var reroll_count := int(plan.reroll_count)
+	_status_label.text = "Going for %s! Roll the remaining %s." % [
+		_number(target),
+		"die" if reroll_count == 1 else "%d dice" % reroll_count,
+	]
+	if bool(plan.preserves_completed_set):
+		var completion_faces := _dictionary_int_array(plan, "completion_faces")
+		_roll_detail_label.text = "Locked %s. A %s completes the 1,000-point special." % [
+			_dice_text(locked_dice),
+			_join_faces(completion_faces),
+		]
+		_selection_label.text = "This uses the turn's one go-for attempt. Success is and rolling."
+	else:
+		_roll_detail_label.text = "Two %ds are locked. One more %d completes the set." % [face, face]
+		_selection_label.text = "The follow-up roll ends the turn unless all six dice score."
 	_update_controls()
 
 
 func _roll_go_for_dice() -> void:
-	var pair_face := pending_go_for_face
-	pending_go_for_face = 0
-	var rolled := _random_dice(4)
+	var plan := pending_go_for_plan.duplicate(true)
+	pending_go_for_plan.clear()
+	var reroll_count := int(plan.reroll_count)
+	var locked_dice := _dictionary_int_array(plan, "locked_dice")
+	var rolled := _random_dice(reroll_count)
 	_show_dice(rolled, false)
-	_roll_detail_label.text = "Locked %d, %d • rolled %s" % [pair_face, pair_face, _dice_text(rolled)]
-	var result := RULES.resolve_go_for(pair_face, rolled)
+	_roll_detail_label.text = "Locked %s • rolled %s" % [_dice_text(locked_dice), _dice_text(rolled)]
+	var result := RULES.resolve_go_for_plan(plan, rolled)
 	if not result.success:
 		_finish_bust("Missed the go-for target — bust!")
 		return
 
 	turn_score += result.score
-	_add_log("%s went for %s and scored %d." % [players[current_player].name, _number(RULES.go_for_target_score(pair_face)), result.score])
+	_add_log("%s went for %s and scored %d." % [players[current_player].name, _number(int(plan.target_score)), result.score])
 	if result.and_rolling:
 		dice_to_roll = 6
 		current_roll.clear()
@@ -610,7 +626,7 @@ func _finish_scoring_turn(reason: String) -> void:
 func _finish_bust(message: String) -> void:
 	var lost := turn_score
 	turn_score = 0
-	pending_go_for_face = 0
+	pending_go_for_plan.clear()
 	awaiting_next_player = true
 	awaiting_go_for_choice = false
 	_clear_go_for_options()
@@ -648,8 +664,8 @@ func _show_dice(values: Array[int], selectable: bool, preselected: PackedInt32Ar
 		_dice_row.add_child(die)
 
 
-func _show_locked_pair(face: int) -> void:
-	_show_dice([face, face], false)
+func _show_locked_go_for_dice(locked_dice: Array[int]) -> void:
+	_show_dice(locked_dice, false)
 	for child in _dice_row.get_children():
 		child.modulate = Color(1.0, 0.86, 0.55, 1.0)
 
@@ -660,15 +676,15 @@ func _clear_dice() -> void:
 		child.queue_free()
 
 
-func _show_go_for_options(options: Array[int]) -> void:
+func _show_go_for_options(options: Array[Dictionary]) -> void:
 	_clear_go_for_options()
 	_go_for_panel.show()
-	_go_for_label.text = "Once this turn, risk the roll by carrying a pair into one four-die attempt:"
-	for face in options:
-		var score := RULES.go_for_target_score(face)
+	_go_for_label.text = "Once this turn, carry a pair into one last-chance roll. Completed matching sets stay locked:"
+	for plan in options:
+		var score := int(plan.target_score)
 		var button := _make_button("GO FOR %s" % _number(score), false)
 		button.custom_minimum_size = Vector2(145, 42)
-		button.pressed.connect(_choose_go_for.bind(face))
+		button.pressed.connect(_choose_go_for.bind(plan.duplicate(true)))
 		_go_for_buttons.add_child(button)
 
 
@@ -769,7 +785,11 @@ func _update_controls() -> void:
 		_keep_button.disabled = false
 		return
 
-	_roll_button.text = "ROLL 4 DICE" if pending_go_for_face > 0 else "ROLL %d %s" % [dice_to_roll, "DIE" if dice_to_roll == 1 else "DICE"]
+	if not pending_go_for_plan.is_empty():
+		var go_for_dice := int(pending_go_for_plan.reroll_count)
+		_roll_button.text = "ROLL %d %s" % [go_for_dice, "DIE" if go_for_dice == 1 else "DICE"]
+	else:
+		_roll_button.text = "ROLL %d %s" % [dice_to_roll, "DIE" if dice_to_roll == 1 else "DICE"]
 	_roll_button.disabled = not current_roll.is_empty()
 	var selection := _selected_values()
 	_set_aside_button.disabled = current_roll.is_empty() or not RULES.score_selection(selection).valid
@@ -816,6 +836,22 @@ func _dice_text(dice: Array[int]) -> String:
 	for die in dice:
 		values.append(str(die))
 	return "[" + ", ".join(values) + "]"
+
+
+func _dictionary_int_array(source: Dictionary, key: String) -> Array[int]:
+	var values: Array[int] = []
+	for value in source.get(key, []):
+		values.append(int(value))
+	return values
+
+
+func _join_faces(faces: Array[int]) -> String:
+	var values: Array[String] = []
+	for face in faces:
+		values.append(str(face))
+	if values.size() == 2:
+		return "%s or %s" % [values[0], values[1]]
+	return ", ".join(values)
 
 
 func _number(value: int) -> String:
@@ -904,6 +940,10 @@ Your first banked turn must be worth at least 1,000 points. After that, you may 
 When all six dice score, pick up all six and roll again if you continue. Every new roll must score or the entire turn is lost.
 
 [b][color=#f2ca66]GO FOR IT — ONCE PER TURN[/color][/b]
-Before scoring any points in a turn, a pair may be carried into one roll of the other four dice. Roll one matching face to complete the three-of-a-kind; extra 1s, 5s, and scoring sets in that follow-up roll also count. Two additional pairs make the 1,000-point three-pair score. A miss busts. A success ends the turn automatically unless all six dice scored.
+Before scoring any points in a turn, a pair may be carried into one last-chance roll. Normally, roll the other four dice and match the pair to complete the three-of-a-kind; extra 1s, 5s, and scoring sets in that follow-up roll also count. Two additional pairs make the 1,000-point three-pair score.
+
+If the first roll contains a triple, a pair, and one other die, keep the triple and pair locked and reroll only the unmatched die. Matching either locked group makes two triplets or four-of-a-kind plus a pair: 1,000 points and rolling. The go-for attempt is spent for the rest of the turn.
+
+A miss busts. A success ends the turn automatically unless all six dice scored.
 
 [color=#a99b84]House-rule note: if every die scores during a go-for attempt, it is treated as “and rolling,” matching the general all-six-dice rule.[/color]"""

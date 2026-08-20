@@ -3,8 +3,7 @@ extends RefCounted
 ## Pure scoring helpers for Gamer Pub's version of 10,000.
 ##
 ## A scoring selection must be made from a single roll. The one exception is
-## `resolve_go_for`, which models the house-rule attempt that carries a pair
-## into one follow-up roll.
+## `resolve_go_for_plan`, which models the once-per-turn house-rule attempt.
 
 
 static func score_selection(dice: Array[int]) -> Dictionary:
@@ -83,25 +82,84 @@ static func best_scoring_selection(dice: Array[int]) -> Dictionary:
 
 static func go_for_options(dice: Array[int]) -> Array[int]:
 	var options: Array[int] = []
-	var counts := _counts_for(dice)
-	for face in range(1, 7):
-		if counts[face] == 2:
-			options.append(face)
+	for plan in go_for_plans(dice):
+		options.append(plan.pair_face)
 	return options
+
+
+static func go_for_plans(dice: Array[int]) -> Array[Dictionary]:
+	var plans: Array[Dictionary] = []
+	if dice.size() != 6 or score_selection(dice).valid:
+		return plans
+
+	var counts := _counts_for(dice)
+	for pair_face in range(1, 7):
+		if counts[pair_face] != 2:
+			continue
+
+		var completed_face := 0
+		for face in range(1, 7):
+			if face != pair_face and counts[face] == 3:
+				completed_face = face
+				break
+
+		var locked_dice: Array[int] = [pair_face, pair_face]
+		var completion_faces: Array[int] = [pair_face]
+		var reroll_count := 4
+		var preserves_completed_set := false
+		if completed_face > 0:
+			locked_dice.clear()
+			for die in dice:
+				if die == pair_face or die == completed_face:
+					locked_dice.append(die)
+			completion_faces.append(completed_face)
+			completion_faces.sort()
+			reroll_count = 1
+			preserves_completed_set = true
+
+		plans.append({
+			"pair_face": pair_face,
+			"locked_dice": locked_dice,
+			"reroll_count": reroll_count,
+			"target_score": go_for_target_score(pair_face),
+			"completion_faces": completion_faces,
+			"preserves_completed_set": preserves_completed_set,
+		})
+	return plans
 
 
 static func go_for_target_score(face: int) -> int:
 	return 1000 if face == 1 else face * 100
 
 
+static func resolve_go_for_plan(plan: Dictionary, rolled_dice: Array[int]) -> Dictionary:
+	var failed := _failed_go_for_result()
+	var pair_face := int(plan.get("pair_face", 0))
+	var reroll_count := int(plan.get("reroll_count", 0))
+	if pair_face < 1 or pair_face > 6 or rolled_dice.size() != reroll_count:
+		return failed
+
+	if bool(plan.get("preserves_completed_set", false)):
+		if reroll_count != 1:
+			return failed
+		var completion_faces: Array[int] = []
+		for value in plan.get("completion_faces", []):
+			completion_faces.append(int(value))
+		if not completion_faces.has(rolled_dice[0]):
+			return failed
+		return {
+			"success": true,
+			"score": 1000,
+			"scoring_count": 6,
+			"and_rolling": true,
+			"label": "Three-pair special — and rolling",
+		}
+
+	return resolve_go_for(pair_face, rolled_dice)
+
+
 static func resolve_go_for(pair_face: int, rolled_dice: Array[int]) -> Dictionary:
-	var failed := {
-		"success": false,
-		"score": 0,
-		"scoring_count": 0,
-		"and_rolling": false,
-		"label": "Missed the target",
-	}
+	var failed := _failed_go_for_result()
 	if pair_face < 1 or pair_face > 6 or rolled_dice.size() != 4:
 		return failed
 
@@ -147,6 +205,16 @@ static func resolve_go_for(pair_face: int, rolled_dice: Array[int]) -> Dictionar
 		"scoring_count": scoring_count,
 		"and_rolling": scoring_count == 6,
 		"label": target_label,
+	}
+
+
+static func _failed_go_for_result() -> Dictionary:
+	return {
+		"success": false,
+		"score": 0,
+		"scoring_count": 0,
+		"and_rolling": false,
+		"label": "Missed the target",
 	}
 
 
