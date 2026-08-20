@@ -468,25 +468,23 @@ func _on_roll_pressed() -> void:
 	_show_dice(current_roll, true, best.indices)
 	_roll_detail_label.text = "Rolled: %s" % _dice_text(current_roll)
 	_roll_button.disabled = true
-	var options: Array[Dictionary] = []
-	if turn_score == 0 and not go_for_used and dice_to_roll == 6:
-		options = RULES.go_for_plans(current_roll)
+	var can_reroll := _can_offer_selected_reroll()
 
 	if best.score <= 0:
-		if options.is_empty():
+		if not can_reroll:
 			_finish_bust("No scoring dice — bust!")
 		else:
 			awaiting_go_for_choice = true
-			_status_label.text = "No scoring dice. Go for a matching set, or end the turn."
-			_selection_label.text = "This is your one chance to rescue the turn."
-			_show_go_for_options(options)
+			_status_label.text = "No score yet. Lock any dice you want and reroll the rest, or end the turn."
+			_selection_label.text = "Select 1–5 dice to lock for the turn's one reroll."
+			_show_selected_reroll_option()
 			_update_controls()
 		return
 
-	_status_label.text = "Choose the scoring dice you want to set aside."
+	_status_label.text = "Choose scoring dice to set aside, or lock any dice for one reroll."
 	_selection_label.text = "Best selection: %d points — %s" % [best.score, best.label]
-	if not options.is_empty():
-		_show_go_for_options(options)
+	if can_reroll:
+		_show_selected_reroll_option()
 	_update_controls()
 
 
@@ -498,11 +496,14 @@ func _update_selection_preview() -> void:
 	var selection := _selected_values()
 	var scored := RULES.score_selection(selection)
 	if selection.is_empty():
-		_selection_label.text = "Select scoring dice to set aside."
+		_selection_label.text = "Select scoring dice, or choose 1–5 dice to lock for a reroll."
 	elif scored.valid:
-		_selection_label.text = "%d points selected — %s" % [scored.score, scored.label]
+		_selection_label.text = "%d points selected — set aside, keep it, or reroll the unselected dice." % scored.score
+	elif _can_offer_selected_reroll() and selection.size() < current_roll.size():
+		_selection_label.text = "%d dice locked. Reroll the remaining %d once." % [selection.size(), current_roll.size() - selection.size()]
 	else:
 		_selection_label.text = "That selection contains a die that does not score."
+	_update_selected_reroll_button()
 	_update_controls()
 
 
@@ -540,35 +541,39 @@ func _on_keep_pressed() -> void:
 	if awaiting_go_for_choice:
 		_finish_bust("Passed on the go-for attempt.")
 		return
+	if not current_roll.is_empty():
+		var selected_values := _selected_values()
+		var scored := RULES.score_selection(selected_values)
+		if scored.valid and _can_bank_score(scored.score):
+			turn_score += scored.score
+			_add_log("%s kept %s for %d." % [players[current_player].name, _dice_text(selected_values), scored.score])
+			_clear_go_for_options()
+			_finish_scoring_turn("Kept it")
+		return
 	if _can_bank() and current_roll.is_empty():
 		_finish_scoring_turn("Kept it")
 
 
-func _choose_go_for(plan: Dictionary) -> void:
+func _choose_selected_reroll() -> void:
+	var locked_dice := _selected_values()
+	if locked_dice.is_empty() or locked_dice.size() >= current_roll.size():
+		return
 	go_for_used = true
-	pending_go_for_plan = plan.duplicate(true)
+	pending_go_for_plan = {
+		"locked_dice": locked_dice,
+		"reroll_count": current_roll.size() - locked_dice.size(),
+	}
 	awaiting_go_for_choice = false
 	current_roll.clear()
 	_clear_go_for_options()
-	var locked_dice := _dictionary_int_array(plan, "locked_dice")
 	_show_locked_go_for_dice(locked_dice)
-	var face := int(plan.pair_face)
-	var target := int(plan.target_score)
-	var reroll_count := int(plan.reroll_count)
-	_status_label.text = "Going for %s! Roll the remaining %s." % [
-		_number(target),
+	var reroll_count := int(pending_go_for_plan.reroll_count)
+	_status_label.text = "Locked %d dice. Roll the remaining %s." % [
+		locked_dice.size(),
 		"die" if reroll_count == 1 else "%d dice" % reroll_count,
 	]
-	if bool(plan.preserves_completed_set):
-		var completion_faces := _dictionary_int_array(plan, "completion_faces")
-		_roll_detail_label.text = "Locked %s. A %s completes the 1,000-point special." % [
-			_dice_text(locked_dice),
-			_join_faces(completion_faces),
-		]
-		_selection_label.text = "This uses the turn's one go-for attempt. Success is and rolling."
-	else:
-		_roll_detail_label.text = "Two %ds are locked. One more %d completes the set." % [face, face]
-		_selection_label.text = "The follow-up roll ends the turn unless all six dice score."
+	_roll_detail_label.text = "Locked %s" % _dice_text(locked_dice)
+	_selection_label.text = "The resulting six-die hand will be scored. This reroll is spent for the turn."
 	_update_controls()
 
 
@@ -580,13 +585,13 @@ func _roll_go_for_dice() -> void:
 	var rolled := _random_dice(reroll_count)
 	_show_dice(rolled, false)
 	_roll_detail_label.text = "Locked %s • rolled %s" % [_dice_text(locked_dice), _dice_text(rolled)]
-	var result := RULES.resolve_go_for_plan(plan, rolled)
+	var result := RULES.resolve_selected_reroll(locked_dice, rolled)
 	if not result.success:
-		_finish_bust("Missed the go-for target — bust!")
+		_finish_bust("The rerolled hand did not score — bust!")
 		return
 
 	turn_score += result.score
-	_add_log("%s went for %s and scored %d." % [players[current_player].name, _number(int(plan.target_score)), result.score])
+	_add_log("%s rerolled %d dice and scored %d." % [players[current_player].name, reroll_count, result.score])
 	if result.and_rolling:
 		dice_to_roll = 6
 		current_roll.clear()
@@ -594,7 +599,7 @@ func _roll_go_for_dice() -> void:
 		_selection_label.text = "All six dice scored. Roll all six again or keep it."
 		_update_all_ui()
 	else:
-		_finish_scoring_turn("Go-for landed for %d" % result.score)
+		_finish_scoring_turn("Reroll scored %d" % result.score)
 
 
 func _finish_scoring_turn(reason: String) -> void:
@@ -676,16 +681,28 @@ func _clear_dice() -> void:
 		child.queue_free()
 
 
-func _show_go_for_options(options: Array[Dictionary]) -> void:
+func _show_selected_reroll_option() -> void:
 	_clear_go_for_options()
 	_go_for_panel.show()
-	_go_for_label.text = "Once this turn, carry a pair into one last-chance roll. Completed matching sets stay locked:"
-	for plan in options:
-		var score := int(plan.target_score)
-		var button := _make_button("GO FOR %s" % _number(score), false)
-		button.custom_minimum_size = Vector2(145, 42)
-		button.pressed.connect(_choose_go_for.bind(plan.duplicate(true)))
-		_go_for_buttons.add_child(button)
+	_go_for_label.text = "Once this turn, lock any dice and reroll all unselected dice:"
+	var button := _make_button("SELECT DICE TO LOCK", false)
+	button.custom_minimum_size = Vector2(210, 42)
+	button.pressed.connect(_choose_selected_reroll)
+	_go_for_buttons.add_child(button)
+	_update_selected_reroll_button()
+
+
+func _update_selected_reroll_button() -> void:
+	if not _go_for_panel.visible or _go_for_buttons.get_child_count() == 0:
+		return
+	var button := _go_for_buttons.get_child(0) as Button
+	var locked_count := _selected_indices().size()
+	var reroll_count := current_roll.size() - locked_count
+	button.disabled = locked_count == 0 or reroll_count <= 0
+	if button.disabled:
+		button.text = "SELECT 1–5 DICE TO LOCK"
+	else:
+		button.text = "REROLL %d %s" % [reroll_count, "DIE" if reroll_count == 1 else "DICE"]
 
 
 func _clear_go_for_options() -> void:
@@ -792,11 +809,15 @@ func _update_controls() -> void:
 		_roll_button.text = "ROLL %d %s" % [dice_to_roll, "DIE" if dice_to_roll == 1 else "DICE"]
 	_roll_button.disabled = not current_roll.is_empty()
 	var selection := _selected_values()
-	_set_aside_button.disabled = current_roll.is_empty() or not RULES.score_selection(selection).valid
+	var selected_score := RULES.score_selection(selection)
+	_set_aside_button.disabled = current_roll.is_empty() or not selected_score.valid
 	_keep_button.text = "KEEP IT"
-	_keep_button.disabled = not current_roll.is_empty() or not _can_bank()
+	if current_roll.is_empty():
+		_keep_button.disabled = not _can_bank()
+	else:
+		_keep_button.disabled = not selected_score.valid or not _can_bank_score(selected_score.score)
 	if not _can_bank():
-		_keep_button.tooltip_text = "Score at least 1,000 this turn to get on the board." if not players[current_player].on_board else "Set aside scoring dice first."
+		_keep_button.tooltip_text = "Score at least 1,000 this turn to get on the board." if not players[current_player].on_board else "Select scoring dice to keep."
 	else:
 		_keep_button.tooltip_text = "Bank this turn's points and end the turn."
 
@@ -805,6 +826,22 @@ func _can_bank() -> bool:
 	if players.is_empty() or turn_score <= 0:
 		return false
 	return players[current_player].on_board or turn_score >= OPENING_SCORE
+
+
+func _can_bank_score(additional_score: int) -> bool:
+	if players.is_empty() or additional_score <= 0:
+		return false
+	return players[current_player].on_board or turn_score + additional_score >= OPENING_SCORE
+
+
+func _can_offer_selected_reroll() -> bool:
+	return (
+		current_roll.size() == 6
+		and dice_to_roll == 6
+		and turn_score == 0
+		and not go_for_used
+		and not awaiting_next_player
+	)
 
 
 func _on_player_count_changed(value: float) -> void:
@@ -843,15 +880,6 @@ func _dictionary_int_array(source: Dictionary, key: String) -> Array[int]:
 	for value in source.get(key, []):
 		values.append(int(value))
 	return values
-
-
-func _join_faces(faces: Array[int]) -> String:
-	var values: Array[String] = []
-	for face in faces:
-		values.append(str(face))
-	if values.size() == 2:
-		return "%s or %s" % [values[0], values[1]]
-	return ", ".join(values)
 
 
 func _number(value: int) -> String:
@@ -940,10 +968,8 @@ Your first banked turn must be worth at least 1,000 points. After that, you may 
 When all six dice score, pick up all six and roll again if you continue. Every new roll must score or the entire turn is lost.
 
 [b][color=#f2ca66]GO FOR IT — ONCE PER TURN[/color][/b]
-Before scoring any points in a turn, a pair may be carried into one last-chance roll. Normally, roll the other four dice and match the pair to complete the three-of-a-kind; extra 1s, 5s, and scoring sets in that follow-up roll also count. Two additional pairs make the 1,000-point three-pair score.
+Before scoring any points in a turn, select any 1–5 dice to lock and reroll every unselected die once. The locked and rerolled dice are combined into a six-die hand and scored. This lets you chase any result—for example, lock 1, 2, 3, 4, and 6, then reroll the extra die for a 5 and a 1,500-point straight.
 
-If the first roll contains a triple, a pair, and one other die, keep the triple and pair locked and reroll only the unmatched die. Matching either locked group makes two triplets or four-of-a-kind plus a pair: 1,000 points and rolling. The go-for attempt is spent for the rest of the turn.
-
-A miss busts. A success ends the turn automatically unless all six dice scored.
+The reroll is spent for the rest of the turn. A hand with no score busts. A scoring hand ends the turn automatically unless all six dice score.
 
 [color=#a99b84]House-rule note: if every die scores during a go-for attempt, it is treated as “and rolling,” matching the general all-six-dice rule.[/color]"""

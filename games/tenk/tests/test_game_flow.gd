@@ -48,16 +48,28 @@ func _run() -> void:
 	game.current_player = 1
 	game.turn_score = 50
 	assert(game._can_bank())
+	game.current_roll = [5, 2, 3, 4, 6, 2]
+	game._show_dice(game.current_roll, true, PackedInt32Array([0]))
+	game._update_controls()
+	assert(not game._keep_button.disabled)
+	game._on_keep_pressed()
+	assert(game.players[1].score == 1500)
+	assert(game.awaiting_next_player)
 
 	game.turn_score = 0
-	game.current_roll = [6, 5, 4, 4, 5, 5]
+	game.dice_to_roll = 6
+	game.current_roll = [2, 4, 3, 4, 6, 1]
 	game.go_for_used = false
-	var go_for_plan: Dictionary = TenkRules.go_for_plans(game.current_roll)[0]
-	game._choose_go_for(go_for_plan)
+	game.awaiting_next_player = false
+	game.awaiting_go_for_choice = false
+	game._show_dice(game.current_roll, true, PackedInt32Array([0, 2, 3, 4, 5]))
+	game._show_selected_reroll_option()
+	game._choose_selected_reroll()
 	assert(game.go_for_used)
 	assert(game.pending_go_for_plan.reroll_count == 1)
 	assert(game._dice_row.get_child_count() == 5)
 	assert(game._roll_button.text == "ROLL 1 DIE")
+	assert(not game._can_offer_selected_reroll())
 
 	assert(game.find_child("BackToLauncherButton", true, false) != null)
 	assert(game.find_child("RulesOverlay", true, false) != null)
