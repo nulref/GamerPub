@@ -468,23 +468,23 @@ func _on_roll_pressed() -> void:
 	_show_dice(current_roll, true, best.indices)
 	_roll_detail_label.text = "Rolled: %s" % _dice_text(current_roll)
 	_roll_button.disabled = true
-	var can_reroll := _can_offer_selected_reroll()
+	var can_rescue := _can_offer_rescue_reroll()
 
 	if best.score <= 0:
-		if not can_reroll:
+		if not can_rescue:
 			_finish_bust("No scoring dice — bust!")
 		else:
 			awaiting_go_for_choice = true
 			_status_label.text = "No score yet. Lock any dice you want and reroll the rest, or end the turn."
 			_selection_label.text = "Select 1–5 dice to lock for the turn's one reroll."
-			_show_selected_reroll_option()
+			_show_rescue_reroll_option()
 			_update_controls()
 		return
 
-	_status_label.text = "Choose scoring dice to set aside, or lock any dice for one reroll."
+	_status_label.text = "Choose scoring dice to set aside, keep, or reroll the unselected dice."
 	_selection_label.text = "Best selection: %d points — %s" % [best.score, best.label]
-	if can_reroll:
-		_show_selected_reroll_option()
+	if current_roll.size() > 1:
+		_show_scoring_reroll_option()
 	_update_controls()
 
 
@@ -496,10 +496,10 @@ func _update_selection_preview() -> void:
 	var selection := _selected_values()
 	var scored := RULES.score_selection(selection)
 	if selection.is_empty():
-		_selection_label.text = "Select scoring dice, or choose 1–5 dice to lock for a reroll."
+		_selection_label.text = "Select 1–5 dice to lock for the rescue reroll." if awaiting_go_for_choice else "Select scoring dice to set aside, keep, or reroll."
 	elif scored.valid:
 		_selection_label.text = "%d points selected — set aside, keep it, or reroll the unselected dice." % scored.score
-	elif _can_offer_selected_reroll() and selection.size() < current_roll.size():
+	elif awaiting_go_for_choice and selection.size() < current_roll.size():
 		_selection_label.text = "%d dice locked. Reroll the remaining %d once." % [selection.size(), current_roll.size() - selection.size()]
 	else:
 		_selection_label.text = "That selection contains a die that does not score."
@@ -552,6 +552,15 @@ func _on_keep_pressed() -> void:
 		return
 	if _can_bank() and current_roll.is_empty():
 		_finish_scoring_turn("Kept it")
+
+
+func _score_and_reroll_selected() -> void:
+	var selected_count := _selected_indices().size()
+	var scored := RULES.score_selection(_selected_values())
+	if not scored.valid or selected_count <= 0 or selected_count >= current_roll.size():
+		return
+	_on_set_aside_pressed()
+	_on_roll_pressed()
 
 
 func _choose_selected_reroll() -> void:
@@ -681,10 +690,21 @@ func _clear_dice() -> void:
 		child.queue_free()
 
 
-func _show_selected_reroll_option() -> void:
+func _show_scoring_reroll_option() -> void:
 	_clear_go_for_options()
 	_go_for_panel.show()
-	_go_for_label.text = "Once this turn, lock any dice and reroll all unselected dice:"
+	_go_for_label.text = "Score the selected dice and reroll every unselected die:"
+	var button := _make_button("SELECT SCORING DICE", false)
+	button.custom_minimum_size = Vector2(210, 42)
+	button.pressed.connect(_score_and_reroll_selected)
+	_go_for_buttons.add_child(button)
+	_update_selected_reroll_button()
+
+
+func _show_rescue_reroll_option() -> void:
+	_clear_go_for_options()
+	_go_for_panel.show()
+	_go_for_label.text = "Opening roll has no score: lock any dice and reroll the rest once:"
 	var button := _make_button("SELECT DICE TO LOCK", false)
 	button.custom_minimum_size = Vector2(210, 42)
 	button.pressed.connect(_choose_selected_reroll)
@@ -698,9 +718,10 @@ func _update_selected_reroll_button() -> void:
 	var button := _go_for_buttons.get_child(0) as Button
 	var locked_count := _selected_indices().size()
 	var reroll_count := current_roll.size() - locked_count
-	button.disabled = locked_count == 0 or reroll_count <= 0
+	var selection_scores: bool = RULES.score_selection(_selected_values()).valid
+	button.disabled = locked_count == 0 or reroll_count <= 0 or (not awaiting_go_for_choice and not selection_scores)
 	if button.disabled:
-		button.text = "SELECT 1–5 DICE TO LOCK"
+		button.text = "SELECT 1–5 DICE TO LOCK" if awaiting_go_for_choice else "SELECT SCORING DICE"
 	else:
 		button.text = "REROLL %d %s" % [reroll_count, "DIE" if reroll_count == 1 else "DICE"]
 
@@ -834,7 +855,7 @@ func _can_bank_score(additional_score: int) -> bool:
 	return players[current_player].on_board or turn_score + additional_score >= OPENING_SCORE
 
 
-func _can_offer_selected_reroll() -> bool:
+func _can_offer_rescue_reroll() -> bool:
 	return (
 		current_roll.size() == 6
 		and dice_to_roll == 6
@@ -951,7 +972,7 @@ func _panel_margin(amount: int) -> MarginContainer:
 
 func _rules_text() -> String:
 	return """[b][color=#f2ca66]THE TURN[/color][/b]
-Roll six dice. After every roll, select at least one scoring die or combination and set it aside. Roll the remaining dice, or bank the turn with KEEP IT. A roll with no score is a bust and loses every point from that turn.
+Roll six dice. After every scoring roll, select at least one scoring die or combination and set it aside. Reroll every unselected die, or bank the selected score with KEEP IT. Keep scoring and rerolling the remaining dice for as long as each roll scores. A roll with no score is a bust and loses every point from that turn.
 
 [b][color=#f2ca66]GETTING ON THE BOARD[/color][/b]
 Your first banked turn must be worth at least 1,000 points. After that, you may bank any positive turn score. The first player to reach 10,000 wins immediately.
@@ -968,7 +989,7 @@ Your first banked turn must be worth at least 1,000 points. After that, you may 
 When all six dice score, pick up all six and roll again if you continue. Every new roll must score or the entire turn is lost.
 
 [b][color=#f2ca66]GO FOR IT — ONCE PER TURN[/color][/b]
-Before scoring any points in a turn, select any 1–5 dice to lock and reroll every unselected die once. The locked and rerolled dice are combined into a six-die hand and scored. This lets you chase any result—for example, lock 1, 2, 3, 4, and 6, then reroll the extra die for a 5 and a 1,500-point straight.
+Only when the opening six-die roll has no scoring dice, select any 1–5 dice to lock and reroll every unselected die once. The locked and rerolled dice are combined into a six-die hand and scored. This lets you rescue the turn by chasing a straight, matching set, or another scoring result.
 
 The reroll is spent for the rest of the turn. A hand with no score busts. A scoring hand ends the turn automatically unless all six dice score.
 

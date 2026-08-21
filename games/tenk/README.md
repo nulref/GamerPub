@@ -13,8 +13,9 @@ This folder contains Gamer Pub's local hot-seat version of the six-die game 10,0
 - A straight scores 1,500.
 - Three pairs, four-of-a-kind plus a pair, and two triplets score 1,000.
 - When all six dice score, all six become available again ("and rolling" or hot dice).
-- Once per turn, before setting aside a score, a player may lock any 1–5 dice and reroll every unselected die once.
-- The locked and rerolled dice form a six-die hand that is scored normally. This supports player-chosen attempts at straights, matching sets, and the three-pair structures without preselecting a specific target.
+- After every scoring roll, a player may set aside the selected scoring dice and reroll every unselected die. This may repeat as long as every new roll scores.
+- The once-per-turn rescue reroll is offered only when the opening six-die roll has no scoring dice. The player may lock any 1–5 dice and reroll the rest once.
+- Rescue-reroll dice form a six-die hand that is scored normally, supporting player-chosen attempts at straights, matching sets, and three-pair structures.
 
 The supplied example where `4, 4` is followed by `4, 5, 5, 1` says both that the turn ends and that all-scoring dice are "and rolling." This implementation applies the general all-six-dice rule consistently, so that result scores 600 and is "and rolling."
 

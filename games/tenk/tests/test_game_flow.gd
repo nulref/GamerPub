@@ -56,20 +56,50 @@ func _run() -> void:
 	assert(game.players[1].score == 1500)
 	assert(game.awaiting_next_player)
 
+	# Ordinary scoring rerolls can repeat until all six dice have scored.
 	game.turn_score = 0
 	game.dice_to_roll = 6
-	game.current_roll = [2, 4, 3, 4, 6, 1]
+	game.go_for_used = false
+	game.awaiting_next_player = false
+	game.awaiting_go_for_choice = false
+	game.current_roll = [4, 6, 4, 2, 4, 4]
+	game._show_dice(game.current_roll, true, PackedInt32Array([0, 2, 4, 5]))
+	game._show_scoring_reroll_option()
+	assert(game._go_for_label.text == "Score the selected dice and reroll every unselected die:")
+	assert((game._go_for_buttons.get_child(0) as Button).text == "REROLL 2 DICE")
+	game._on_set_aside_pressed()
+	assert(game.turn_score == 800)
+	assert(game.dice_to_roll == 2)
+	assert(not game.go_for_used)
+	game.current_roll = [3, 5]
+	game._show_dice(game.current_roll, true, PackedInt32Array([1]))
+	game._on_set_aside_pressed()
+	assert(game.turn_score == 850)
+	assert(game.dice_to_roll == 1)
+	game.current_roll = [1]
+	game._show_dice(game.current_roll, true, PackedInt32Array([0]))
+	game._on_set_aside_pressed()
+	assert(game.turn_score == 950)
+	assert(game.dice_to_roll == 6)
+	assert(game.current_roll.is_empty())
+	assert(game._status_label.text.begins_with("AND ROLLING!"))
+
+	# The player-directed one-time reroll remains available as a no-score rescue.
+	game.turn_score = 0
+	game.dice_to_roll = 6
+	game.current_roll = [2, 4, 3, 4, 6, 2]
 	game.go_for_used = false
 	game.awaiting_next_player = false
 	game.awaiting_go_for_choice = false
 	game._show_dice(game.current_roll, true, PackedInt32Array([0, 2, 3, 4, 5]))
-	game._show_selected_reroll_option()
+	game.awaiting_go_for_choice = true
+	game._show_rescue_reroll_option()
 	game._choose_selected_reroll()
 	assert(game.go_for_used)
 	assert(game.pending_go_for_plan.reroll_count == 1)
 	assert(game._dice_row.get_child_count() == 5)
 	assert(game._roll_button.text == "ROLL 1 DIE")
-	assert(not game._can_offer_selected_reroll())
+	assert(not game._can_offer_rescue_reroll())
 
 	assert(game.find_child("BackToLauncherButton", true, false) != null)
 	assert(game.find_child("RulesOverlay", true, false) != null)
