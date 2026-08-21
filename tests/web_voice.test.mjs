@@ -21,6 +21,10 @@ class FakeSocket extends EventTarget {
     this.sent.push(JSON.parse(message));
   }
 
+  receive(message) {
+    this.dispatchEvent(new MessageEvent("message", { data: JSON.stringify(message) }));
+  }
+
   close() {
     this.readyState = 3;
     this.dispatchEvent(new Event("close"));
@@ -30,35 +34,47 @@ class FakeSocket extends EventTarget {
 test("builds the dedicated Tenk voice URL with browser identity", () => {
   const url = new URL(tenkVoiceSocketUrl(
     { userId: "gamer_abcd", name: "Player ABCD" },
-    "wss://voice.example/voice/tenk",
+    "wss://voice.example/tenk",
   ));
-  assert.equal(url.pathname, "/voice/tenk");
+  assert.equal(url.pathname, "/tenk");
   assert.equal(url.searchParams.get("user_id"), "gamer_abcd");
   assert.equal(url.searchParams.get("name"), "Player ABCD");
 });
 
-test("sends only voice protocol messages after the socket connects", () => {
+test("routes Tenk lobby, game, and voice messages after the socket connects", () => {
   const previousWebSocket = globalThis.WebSocket;
   globalThis.WebSocket = FakeSocket;
   try {
     let socket;
     const statuses = [];
+    const roomStates = [];
+    const gameStates = [];
     const client = new VoiceRoomClient({
-      url: "wss://voice.example/voice/tenk",
+      url: "wss://voice.example/tenk",
       socketFactory: (url) => {
         socket = new FakeSocket(url);
         return socket;
       },
       onStatus: (status) => statuses.push(status),
+      onState: (room) => roomStates.push(room),
+      onGame: (game) => gameStates.push(game),
     });
     client.connect({ userId: "gamer_abcd", name: "Player ABCD" });
     assert.deepEqual(statuses, ["connecting"]);
     assert.equal(client.joinVoice(), false);
     socket.open();
+    socket.receive({ type: "room_state", room: { phase: "waiting", players: [] } });
+    socket.receive({ type: "game_state", game: { currentPlayer: 0 } });
+    assert.equal(roomStates[0].phase, "waiting");
+    assert.equal(gameStates[0].currentPlayer, 0);
     assert.equal(client.joinVoice(), true);
+    assert.equal(client.setReady(true), true);
+    assert.equal(client.roll(), true);
     assert.equal(client.sendVoiceSignal("peer-id", { kind: "candidate", candidate: null }), true);
     assert.deepEqual(socket.sent, [
       { type: "voice_join" },
+      { type: "set_ready", ready: true },
+      { type: "roll" },
       {
         type: "voice_signal",
         targetPeerId: "peer-id",

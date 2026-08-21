@@ -14,7 +14,7 @@ The launcher currently includes:
 
 Joker supports local play against bots and retains its Discord multiplayer bridge. Multiplayer is available only when the exported game is hosted by Joker's Discord Activity shell.
 
-Tenk supports 2–8 local hot-seat players, interactive dice selection, the 1,000-point opening requirement, hot dice, the Gamer Pub "go for it" house rule, and optional eight-person browser voice chat on the hosted Web build.
+Tenk supports 2–8 local hot-seat players, interactive dice selection, the 1,000-point opening requirement, hot dice, and the Gamer Pub "go for it" house rule. The hosted Web build adds a shared 2–8 player room with host-controlled start, server-authoritative turns and dice, reconnect state, and optional eight-person voice chat.
 
 ## Technology
 
@@ -67,7 +67,7 @@ From Joker's menu, **Back to Gamer Pub** returns to the launcher.
 
 ## Netlify play-test build
 
-The repository includes a single-threaded Godot Web preset and a prebuilt `dist/` bundle. Netlify serves that directory directly; it does not need Godot installed during deployment. The export script adds Tenk's browser voice toolbar and copies its WebRTC client into the bundle. Voice is optional, appears only while Tenk is open, and supports up to eight people through Joker's existing signaling worker.
+The repository includes a single-threaded Godot Web preset and a prebuilt `dist/` bundle. Netlify serves that directory directly; it does not need Godot installed during deployment. The export script adds Tenk's browser room and voice bridge and copies its WebRTC client into the bundle. On the hosted site, every connected browser joins the same Tenk lobby; the first player is host, all players ready up, and the host starts the game. Voice remains optional and supports up to eight people through Joker's existing Worker.
 
 To refresh the browser bundle after changing the game, install the Godot 4.7.1 export templates and run:
 
@@ -81,9 +81,9 @@ If Godot is not on `PATH`, pass its executable explicitly:
 .\scripts\export_web.ps1 -GodotPath "C:\path\to\Godot_v4.7.1-stable_win64.exe"
 ```
 
-Commit the regenerated files in `dist/` before pushing. Joker multiplayer is disabled on the standalone Netlify build and becomes available only inside its Discord Activity wrapper; Joker single-player and 10,000 local hot-seat play remain available.
+Commit the regenerated files in `dist/` before pushing. Joker multiplayer is disabled on the standalone Netlify build and becomes available only inside its Discord Activity wrapper. Tenk uses the shared browser lobby on Netlify and retains local hot-seat play in native/headless builds.
 
-The production voice worker must allow `https://gamerpub.netlify.app` as an exact WebSocket origin and expose `/voice/tenk`. Netlify's response headers allow microphone capture from the Gamer Pub origin only.
+Deploy the Joker Cloudflare Worker before the Gamer Pub Netlify bundle so its `TENK_ROOMS` Durable Object migration and `/tenk` endpoint are available first. The production Worker must allow `https://gamerpub.netlify.app` as an exact WebSocket origin. Netlify's response headers allow microphone capture from the Gamer Pub origin only.
 
 ## 10,000 controls
 

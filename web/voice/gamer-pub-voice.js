@@ -10,13 +10,30 @@ const playbackButton = document.querySelector("#tenk-voice-playback");
 const leaveButton = document.querySelector("#tenk-voice-leave");
 const statusLabel = document.querySelector("#tenk-voice-status");
 const remoteAudio = document.querySelector("#tenk-remote-audio");
-const configuredUrl = document.querySelector('meta[name="gamer-pub-voice-url"]')?.content?.trim();
+const productionUrl = document.querySelector('meta[name="gamer-pub-voice-url"]')?.content?.trim();
+const configuredUrl = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+  ? `ws://${window.location.hostname}:8787/tenk`
+  : productionUrl;
 const PLAYER_ID_KEY = "gamer-pub.voice-player-id";
 
 let visible = false;
 let socketConnected = false;
 
+function postToGame(type, payload) {
+  window.postMessage({
+    source: "gamer-pub-tenk-web",
+    type,
+    payloadJson: JSON.stringify(payload ?? null),
+  }, window.location.origin);
+}
+
 function playerIdentity() {
+	const localPlayer = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+		? new URLSearchParams(window.location.search).get("tenk_player")
+		: null;
+	if (localPlayer && /^[A-Za-z0-9_-]{1,32}$/.test(localPlayer)) {
+		return { userId: `dev_${localPlayer}`, name: `Player ${localPlayer}` };
+	}
   let userId = null;
   try {
     userId = localStorage.getItem(PLAYER_ID_KEY);
@@ -43,23 +60,27 @@ const roomClient = new VoiceRoomClient({
   ...(configuredUrl ? { url: configuredUrl } : {}),
   onStatus: (status) => {
     socketConnected = status === "connected";
-    if (socketConnected) {
-      voiceChat.setRoomState(
-        { players: [{ id: identity.userId, connected: true, isBot: false }] },
-        identity.userId,
-      );
-    } else if (status === "disconnected") {
+    if (status === "disconnected") {
       voiceChat.handleRoomDisconnect();
     }
+    postToGame("room-status", { status });
     if (visible && (status === "connecting" || status === "reconnecting")) {
       setStatus(status === "connecting" ? "Connecting voice..." : "Reconnecting voice...");
     }
   },
+  onState: (room) => {
+    voiceChat.setRoomState(room, identity.userId);
+    postToGame("room-state", room);
+  },
+  onGame: (game) => postToGame("game-state", game),
   onVoice: (message) => {
     if (message.type === "voice_disconnected") voiceChat.handleRoomDisconnect();
     else void voiceChat.handleServerMessage(message);
   },
-  onError: setStatus,
+  onError: (message) => {
+    setStatus(message);
+    postToGame("room-error", { message });
+  },
 });
 
 function setStatus(message = "") {
@@ -113,12 +134,30 @@ function setVisible(nextVisible) {
   visible = Boolean(nextVisible);
   toolbar.hidden = !visible;
   if (visible) {
+    postToGame("tenk-context", { currentUser: identity });
     if (!socketConnected && !roomClient.socket) roomClient.connect(identity);
   } else {
     voiceChat.leave();
     roomClient.disconnect();
     setStatus("");
   }
+}
+
+const roomCommands = new Set([
+  "set_name",
+  "set_ready",
+  "start_game",
+  "roll",
+  "reroll",
+  "keep",
+  "next_player",
+  "reset_game",
+]);
+
+function sendRoomCommand(command, payload = {}) {
+  if (!roomCommands.has(command)) return false;
+  if (command === "set_name") return roomClient.setName(payload.name);
+  return roomClient.send(command, payload);
 }
 
 microphoneButton.addEventListener("click", () => void voiceChat.togglePrimary());
@@ -129,4 +168,10 @@ window.addEventListener("beforeunload", () => {
   roomClient.disconnect({ announce: false });
 });
 
-window.GamerPubVoice = { setVisible };
+window.addEventListener("message", (event) => {
+  if (event.origin !== window.location.origin || event.data?.source !== "gamer-pub-tenk-godot") return;
+  sendRoomCommand(event.data.command, event.data.payload ?? {});
+});
+
+window.GamerPubVoice = { setVisible, sendRoomCommand };
+window.dispatchEvent(new Event("gamer-pub-voice-ready"));

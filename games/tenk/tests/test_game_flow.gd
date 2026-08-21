@@ -166,6 +166,54 @@ func _run() -> void:
 	assert(game._roll_button.text == "REROLL")
 	assert(not game._roll_button.disabled)
 
+	# Browser-room snapshots replace local setup and enable only the active
+	# player's device while keeping every table synchronized.
+	game._online_mode = true
+	game._web_bridge = game.get_node("/root/TenkWebBridge")
+	game._web_bridge.set("context", {"currentUser": {"userId": "online-one", "name": "Online One"}})
+	game._configure_online_setup()
+	var online_room := {
+		"phase": "waiting",
+		"hostId": "online-one",
+		"players": [
+			{"id": "online-one", "name": "Online One", "ready": true, "connected": true},
+			{"id": "online-two", "name": "Online Two", "ready": true, "connected": true},
+		],
+	}
+	game._on_online_room_state(online_room)
+	assert(game._ready_button.visible)
+	assert(not game._start_button.disabled)
+	var online_game := {
+		"players": [
+			{"id": "online-one", "name": "Online One", "score": 0, "onBoard": false, "connected": true},
+			{"id": "online-two", "name": "Online Two", "score": 0, "onBoard": false, "connected": true},
+		],
+		"currentPlayer": 0,
+		"turnScore": 0,
+		"diceToRoll": 6,
+		"currentRoll": [],
+		"lockedIndices": [],
+		"lockedBatches": [],
+		"suggestedIndices": [],
+		"goForUsed": false,
+		"rescueMode": false,
+		"hotHandReady": false,
+		"awaitingNextPlayer": false,
+		"gameOver": false,
+		"winnerId": null,
+		"status": "Online One, roll all six dice.",
+		"rollDetail": "Six dice are ready.",
+		"selection": "Roll to begin.",
+		"activity": ["Online One's turn"],
+	}
+	game._on_online_game_state(online_game)
+	assert(not game._roll_button.disabled)
+	online_game.currentPlayer = 1
+	game._on_online_game_state(online_game)
+	assert(game._roll_button.disabled)
+	assert(game._keep_button.disabled)
+	game._online_mode = false
+
 	# Portrait layouts stack the scoreboard above the table, hide Table Talk,
 	# enlarge touch targets, and reserve space above mobile host overlays.
 	root.size = Vector2i(900, 1600)

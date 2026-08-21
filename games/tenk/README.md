@@ -1,6 +1,9 @@
 # 10,000
 
-This folder contains Gamer Pub's local hot-seat version of the six-die game 10,000.
+This folder contains Gamer Pub's version of the six-die game 10,000. Native
+builds use local hot-seat play; the Netlify Web build uses a shared 2–8 player
+lobby whose host starts the game and whose dice, scores, and turns are enforced
+by the Joker Cloudflare Worker.
 
 ## Implemented rules
 

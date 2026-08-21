@@ -57,7 +57,7 @@ foreach ($voiceFile in $voiceFiles) {
 $voiceToolbarPath = Join-Path $voiceSourceDirectory "toolbar.html"
 $voiceToolbar = Get-Content -LiteralPath $voiceToolbarPath -Raw
 $voiceHead = @'
-		<meta name="gamer-pub-voice-url" content="wss://joker-multiplayer.joker-multiplayer.workers.dev/voice/tenk">
+		<meta name="gamer-pub-voice-url" content="wss://joker-multiplayer.joker-multiplayer.workers.dev/tenk">
 		<link rel="stylesheet" href="voice/voice.css">
 '@
 $exportedHtml = $exportedHtml.Replace("`t</head>", "$voiceHead`r`n`t</head>")

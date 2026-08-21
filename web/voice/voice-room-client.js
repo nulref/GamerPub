@@ -1,4 +1,4 @@
-const DEFAULT_VOICE_URL = "wss://joker-multiplayer.joker-multiplayer.workers.dev/voice/tenk";
+const DEFAULT_VOICE_URL = "wss://joker-multiplayer.joker-multiplayer.workers.dev/tenk";
 
 export function tenkVoiceSocketUrl(identity, configuredUrl = DEFAULT_VOICE_URL) {
   const url = new URL(configuredUrl);
@@ -15,6 +15,8 @@ export class VoiceRoomClient {
     url = DEFAULT_VOICE_URL,
     socketFactory = (socketUrl) => new WebSocket(socketUrl),
     onStatus = () => {},
+    onState = () => {},
+    onGame = () => {},
     onVoice = () => {},
     onError = () => {},
     reconnectDelayMs = 1200,
@@ -22,6 +24,8 @@ export class VoiceRoomClient {
     this.url = url;
     this.socketFactory = socketFactory;
     this.onStatus = onStatus;
+    this.onState = onState;
+    this.onGame = onGame;
     this.onVoice = onVoice;
     this.onError = onError;
     this.reconnectDelayMs = reconnectDelayMs;
@@ -29,6 +33,7 @@ export class VoiceRoomClient {
     this.identity = null;
     this.manualClose = false;
     this.reconnectTimer = null;
+    this.roomState = null;
   }
 
   connect(identity) {
@@ -53,13 +58,48 @@ export class VoiceRoomClient {
     return this.send("voice_signal", { targetPeerId, signal });
   }
 
+  setName(name) {
+    const normalized = name?.trim();
+    if (!normalized) return false;
+    this.identity = { ...this.identity, name: normalized };
+    return this.send("set_name", { name: normalized });
+  }
+
+  setReady(ready) {
+    return this.send("set_ready", { ready: Boolean(ready) });
+  }
+
+  startGame() {
+    return this.send("start_game");
+  }
+
+  roll() {
+    return this.send("roll");
+  }
+
+  reroll(selectedIndices) {
+    return this.send("reroll", { selectedIndices });
+  }
+
+  keep(selectedIndices) {
+    return this.send("keep", { selectedIndices });
+  }
+
+  nextPlayer() {
+    return this.send("next_player");
+  }
+
+  resetGame() {
+    return this.send("reset_game");
+  }
+
   send(type, payload = {}) {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return false;
     this.socket.send(JSON.stringify({ type, ...payload }));
     return true;
   }
 
-  disconnect({ announce = true } = {}) {
+  disconnect({ announce = true, leave = true } = {}) {
     this.manualClose = true;
     if (this.reconnectTimer !== null) {
       clearTimeout(this.reconnectTimer);
@@ -67,6 +107,9 @@ export class VoiceRoomClient {
     }
     if (this.socket) {
       const oldSocket = this.socket;
+      if (leave && oldSocket.readyState === WebSocket.OPEN) {
+        oldSocket.send(JSON.stringify({ type: "leave" }));
+      }
       this.socket = null;
       oldSocket.close();
     }
@@ -91,7 +134,12 @@ export class VoiceRoomClient {
         this.onError("The voice server sent an invalid response.");
         return;
       }
-      if (message.type === "voice_config" || message.type === "voice_presence" ||
+      if (message.type === "room_state") {
+        this.roomState = message.room;
+        this.onState(message.room);
+      } else if (message.type === "game_state") {
+        this.onGame(message.game);
+      } else if (message.type === "voice_config" || message.type === "voice_presence" ||
           message.type === "voice_signal") {
         this.onVoice(message);
       } else if (message.type === "error") {

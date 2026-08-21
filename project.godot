@@ -18,6 +18,7 @@ config/icon="res://launcher/assets/art/gp_logo.webp"
 [autoload]
 
 JokerDiscordBridge="*res://games/joker/scripts/discord_bridge.gd"
+TenkWebBridge="*res://games/tenk/scripts/web_bridge.gd"
 
 [display]
 

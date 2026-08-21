@@ -64,20 +64,45 @@ var _actions: HBoxContainer
 var _activity_panel: PanelContainer
 var _footer_label: Label
 var _setup_panel: PanelContainer
+var _setup_intro: Label
+var _setup_count_row: HBoxContainer
+var _online_name_edit: LineEdit
+var _ready_button: Button
+var _start_button: Button
+var _again_button: Button
 var _rules_panel: PanelContainer
 var _rules_text_label: RichTextLabel
 var _winner_panel: PanelContainer
 var _modal_buttons: Array[Button] = []
 var _portrait_layout := false
+var _online_mode := false
+var _online_room: Dictionary = {}
+var _online_game: Dictionary = {}
+var _online_display_turn_score := 0
+var _web_bridge: Node
 
 
 func _ready() -> void:
 	_set_web_voice_visible(true)
 	randomize()
 	_build_interface()
+	_web_bridge = get_node("/root/TenkWebBridge")
+	_online_mode = OS.has_feature("web")
+	if _online_mode:
+		_web_bridge.connect("context_changed", _on_online_context_changed)
+		_web_bridge.connect("room_state_changed", _on_online_room_state)
+		_web_bridge.connect("game_state_changed", _on_online_game_state)
+		_web_bridge.connect("room_status_changed", _on_online_room_status)
+		_web_bridge.connect("room_error", _on_online_room_error)
+		_configure_online_setup()
 	get_viewport().size_changed.connect(_queue_responsive_layout)
 	_apply_responsive_layout()
-	_show_setup()
+	if _online_mode:
+		_on_online_context_changed(_web_bridge.get("context"))
+		_on_online_room_state(_web_bridge.get("room_state"))
+		_on_online_game_state(_web_bridge.get("game_state"))
+	else:
+		_show_setup()
 
 
 func _exit_tree() -> void:
@@ -253,6 +278,8 @@ func _apply_modal_layout() -> void:
 	_rules_text_label.add_theme_font_size_override("normal_font_size", 26 if _portrait_layout else 17)
 	_rules_text_label.add_theme_font_size_override("bold_font_size", 28 if _portrait_layout else 18)
 	_player_count.custom_minimum_size.y = 84 if _portrait_layout else 44
+	_online_name_edit.custom_minimum_size.y = 84 if _portrait_layout else 44
+	_online_name_edit.add_theme_font_size_override("font_size", 26 if _portrait_layout else 16)
 	for edit in _name_edits:
 		edit.custom_minimum_size.y = 84 if _portrait_layout else 44
 		edit.add_theme_font_size_override("font_size", 26 if _portrait_layout else 16)
@@ -424,15 +451,23 @@ func _build_setup_overlay() -> Control:
 	var title := _make_label("PULL UP A CHAIR", 30, Color("f3cf70"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
-	var intro := _make_label("Choose 2–8 local players. Pass the dice when each turn ends.", 16, Color("d0c3ad"))
-	intro.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(intro)
-	var count_row := HBoxContainer.new()
-	count_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	count_row.add_theme_constant_override("separation", 16)
-	column.add_child(count_row)
-	count_row.add_child(_make_label("PLAYERS", 17, Color("f5e5bb")))
+	_setup_intro = _make_label("Choose 2–8 local players. Pass the dice when each turn ends.", 16, Color("d0c3ad"))
+	_setup_intro.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_setup_intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_setup_intro)
+	_online_name_edit = LineEdit.new()
+	_online_name_edit.placeholder_text = "Your player name"
+	_online_name_edit.custom_minimum_size.y = 44
+	_online_name_edit.add_theme_font_size_override("font_size", 16)
+	_online_name_edit.text_submitted.connect(_on_online_name_submitted)
+	_online_name_edit.focus_exited.connect(_submit_online_name)
+	_online_name_edit.hide()
+	column.add_child(_online_name_edit)
+	_setup_count_row = HBoxContainer.new()
+	_setup_count_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_setup_count_row.add_theme_constant_override("separation", 16)
+	column.add_child(_setup_count_row)
+	_setup_count_row.add_child(_make_label("PLAYERS", 17, Color("f5e5bb")))
 	_player_count = SpinBox.new()
 	_player_count.min_value = 2
 	_player_count.max_value = 8
@@ -440,7 +475,7 @@ func _build_setup_overlay() -> Control:
 	_player_count.value = 2
 	_player_count.custom_minimum_size = Vector2(110, 44)
 	_player_count.value_changed.connect(_on_player_count_changed)
-	count_row.add_child(_player_count)
+	_setup_count_row.add_child(_player_count)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -467,11 +502,17 @@ func _build_setup_overlay() -> Control:
 	back.pressed.connect(back_to_launcher)
 	buttons.add_child(back)
 	_modal_buttons.append(back)
-	var start := _make_button("START GAME", true)
-	start.custom_minimum_size = Vector2(220, 52)
-	start.pressed.connect(_start_game)
-	buttons.add_child(start)
-	_modal_buttons.append(start)
+	_ready_button = _make_button("READY UP", false)
+	_ready_button.custom_minimum_size = Vector2(180, 52)
+	_ready_button.pressed.connect(_toggle_online_ready)
+	_ready_button.hide()
+	buttons.add_child(_ready_button)
+	_modal_buttons.append(_ready_button)
+	_start_button = _make_button("START GAME", true)
+	_start_button.custom_minimum_size = Vector2(220, 52)
+	_start_button.pressed.connect(_start_game)
+	buttons.add_child(_start_button)
+	_modal_buttons.append(_start_button)
 	return overlay
 
 
@@ -526,11 +567,11 @@ func _build_winner_overlay() -> Control:
 	_winner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_winner_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_winner_label)
-	var again := _make_button("PLAY AGAIN", true)
-	again.custom_minimum_size.y = 54
-	again.pressed.connect(_show_setup)
-	column.add_child(again)
-	_modal_buttons.append(again)
+	_again_button = _make_button("PLAY AGAIN", true)
+	_again_button.custom_minimum_size.y = 54
+	_again_button.pressed.connect(_on_play_again)
+	column.add_child(_again_button)
+	_modal_buttons.append(_again_button)
 	var pub := _make_button("BACK TO GAMER PUB", false)
 	pub.custom_minimum_size.y = 50
 	pub.pressed.connect(back_to_launcher)
@@ -559,10 +600,13 @@ func _show_setup() -> void:
 	if _winner_overlay:
 		_winner_overlay.hide()
 	_setup_overlay.show()
-	_turn_badge.text = "SET UP GAME"
+	_turn_badge.text = "ONLINE LOBBY" if _online_mode else "SET UP GAME"
 
 
 func _start_game() -> void:
+	if _online_mode:
+		_web_bridge.call("send_room_command", "start_game")
+		return
 	players.clear()
 	for index in range(int(_player_count.value)):
 		var player_name := _name_edits[index].text.strip_edges()
@@ -599,6 +643,14 @@ func _begin_turn() -> void:
 func _on_roll_pressed() -> void:
 	if awaiting_next_player:
 		return
+	if _online_mode:
+		if current_roll.is_empty() or hot_hand_ready:
+			_web_bridge.call("send_room_command", "roll")
+		else:
+			_web_bridge.call("send_room_command", "reroll", {
+				"selectedIndices": _selected_indices_array(),
+			})
+		return
 	if current_roll.is_empty() or hot_hand_ready:
 		hot_hand_ready = false
 		locked_indices.clear()
@@ -629,6 +681,14 @@ func _update_selection_preview() -> void:
 
 
 func _on_keep_pressed() -> void:
+	if _online_mode:
+		if awaiting_next_player:
+			_web_bridge.call("send_room_command", "next_player")
+		else:
+			_web_bridge.call("send_room_command", "keep", {
+				"selectedIndices": _selected_indices_array(),
+			})
+		return
 	if awaiting_next_player:
 		current_player = (current_player + 1) % players.size()
 		_begin_turn()
@@ -792,13 +852,17 @@ func _show_hand_dice(preselected: PackedInt32Array = PackedInt32Array()) -> void
 	_clear_dice()
 	for index in range(current_roll.size()):
 		var locked := locked_indices.has(index)
+		var interactive := not locked and (not _online_mode or _is_online_local_turn())
 		var die := Button.new()
 		die.toggle_mode = not locked
-		die.disabled = locked
+		die.disabled = not interactive
 		die.custom_minimum_size = Vector2(170, 170) if _portrait_layout else Vector2(112, 112)
 		die.icon = DIE_TEXTURES[current_roll[index] - 1]
 		die.expand_icon = true
-		die.tooltip_text = "Die showing %d%s" % [current_roll[index], " — locked" if locked else " — click to select"]
+		die.tooltip_text = "Die showing %d%s" % [
+			current_roll[index],
+			" — locked" if locked else (" — click to select" if interactive else " — waiting for the active player")
+		]
 		die.add_theme_stylebox_override("normal", _panel_style(Color("f0e5d0"), Color("7b5b42"), 15, 2))
 		die.add_theme_stylebox_override("hover", _panel_style(Color("fff5df"), Color("f1cc68"), 15, 3))
 		die.add_theme_stylebox_override("pressed", _panel_style(Color("f8dda0"), Color("fff0a0"), 15, 5))
@@ -806,7 +870,7 @@ func _show_hand_dice(preselected: PackedInt32Array = PackedInt32Array()) -> void
 		die.set_pressed_no_signal(locked or preselected.has(index))
 		if locked:
 			die.modulate = Color(1.0, 0.82, 0.45, 0.72)
-		else:
+		elif interactive:
 			die.toggled.connect(_on_die_toggled.bind(index))
 		_dice_row.add_child(die)
 
@@ -829,6 +893,13 @@ func _selected_indices() -> PackedInt32Array:
 
 func _selected_values() -> Array[int]:
 	return _values_for_indices(_selected_indices())
+
+
+func _selected_indices_array() -> Array[int]:
+	var result: Array[int] = []
+	for index in _selected_indices():
+		result.append(index)
+	return result
 
 
 func _locked_values() -> Array[int]:
@@ -906,11 +977,29 @@ func _update_turn_summary() -> void:
 	if awaiting_next_player and turn_score > 0:
 		_turn_score_label.text = "BANKED THIS TURN  %s" % _number(turn_score)
 	else:
-		_turn_score_label.text = "TURN SCORE  %s" % _number(turn_score + _current_hand_score())
+		var displayed_score := turn_score + _current_hand_score()
+		if _online_mode and not _is_online_local_turn():
+			displayed_score = _online_display_turn_score
+		_turn_score_label.text = "TURN SCORE  %s" % _number(displayed_score)
 
 
 func _update_controls() -> void:
 	if players.is_empty() or game_over:
+		_roll_button.disabled = true
+		_keep_button.disabled = true
+		return
+	if _online_mode and not _is_online_local_turn():
+		if awaiting_next_player:
+			_keep_button.text = "NEXT PLAYER"
+		elif current_roll.is_empty():
+			_roll_button.text = "ROLL 6 DICE"
+			_keep_button.text = "KEEP IT"
+		elif hot_hand_ready:
+			_roll_button.text = "REROLL ALL 6"
+			_keep_button.text = "KEEP IT"
+		else:
+			_roll_button.text = "REROLL"
+			_keep_button.text = "KEEP IT"
 		_roll_button.disabled = true
 		_keep_button.disabled = true
 		return
@@ -963,6 +1052,210 @@ func _can_bank_score(additional_score: int) -> bool:
 	return players[current_player].on_board or turn_score + additional_score >= OPENING_SCORE
 
 
+func _configure_online_setup() -> void:
+	_setup_intro.text = "Join the shared browser table, ready up, and let the host start the game."
+	_setup_count_row.hide()
+	_online_name_edit.show()
+	_ready_button.show()
+	_start_button.disabled = true
+	for edit in _name_edits:
+		edit.editable = false
+		edit.clear()
+		edit.hide()
+	_show_setup()
+
+
+func _on_online_context_changed(context: Dictionary) -> void:
+	if not _online_mode:
+		return
+	var user: Dictionary = context.get("currentUser", {})
+	if not _online_name_edit.has_focus():
+		_online_name_edit.text = String(user.get("name", ""))
+
+
+func _on_online_room_status(status: String) -> void:
+	if not _online_mode:
+		return
+	if status == "connecting" or status == "reconnecting":
+		_setup_intro.text = "Connecting to the shared Tenk table..."
+	elif status == "disconnected" and _online_room.is_empty():
+		_setup_intro.text = "The shared Tenk table is disconnected. Reconnecting..."
+
+
+func _on_online_room_error(message: String) -> void:
+	if not _online_mode:
+		return
+	_status_label.text = message
+	if _setup_overlay.visible:
+		_setup_intro.text = message
+
+
+func _on_online_room_state(room: Dictionary) -> void:
+	if not _online_mode or room.is_empty():
+		return
+	_online_room = room.duplicate(true)
+	var room_players: Array = room.get("players", [])
+	var self_id := _online_user_id()
+	var self_player: Dictionary = {}
+	for index in range(_name_edits.size()):
+		var edit := _name_edits[index]
+		if index < room_players.size():
+			var room_player: Dictionary = room_players[index]
+			var marker := "HOST" if String(room.get("hostId", "")) == String(room_player.get("id", "")) else "PLAYER"
+			var readiness := "READY" if bool(room_player.get("ready", false)) else "WAITING"
+			var connection := "" if bool(room_player.get("connected", false)) else " • OFFLINE"
+			edit.text = "%s • %s — %s%s" % [marker, String(room_player.get("name", "Player")), readiness, connection]
+			edit.show()
+			if String(room_player.get("id", "")) == self_id:
+				self_player = room_player
+		else:
+			edit.clear()
+			edit.hide()
+
+	if not self_player.is_empty() and not _online_name_edit.has_focus():
+		_online_name_edit.text = String(self_player.get("name", ""))
+	var self_ready := bool(self_player.get("ready", false))
+	_ready_button.text = "NOT READY" if self_ready else "READY UP"
+	_ready_button.disabled = self_player.is_empty()
+	var is_host := String(room.get("hostId", "")) == self_id
+	var all_ready := room_players.size() >= 2
+	for room_player in room_players:
+		if bool(room_player.get("connected", false)) and not bool(room_player.get("ready", false)):
+			all_ready = false
+	_start_button.text = "START GAME" if is_host else "WAITING FOR HOST"
+	_start_button.disabled = not is_host or not all_ready
+	_setup_intro.text = (
+		"You are the host. Everyone must be ready before you start."
+		if is_host
+		else "Waiting for the host to start once everyone is ready."
+	)
+
+	if String(room.get("phase", "waiting")) == "waiting":
+		_winner_overlay.hide()
+		_show_setup()
+	else:
+		_setup_overlay.hide()
+
+
+func _on_online_game_state(game_state: Dictionary) -> void:
+	if not _online_mode or game_state.is_empty():
+		return
+	_online_game = game_state.duplicate(true)
+	players.clear()
+	for raw_player in game_state.get("players", []):
+		var online_player: Dictionary = raw_player
+		players.append({
+			"id": String(online_player.get("id", "")),
+			"name": String(online_player.get("name", "Player")),
+			"score": int(online_player.get("score", 0)),
+			"on_board": bool(online_player.get("onBoard", false)),
+			"connected": bool(online_player.get("connected", false)),
+		})
+	if players.is_empty():
+		return
+	current_player = clampi(int(game_state.get("currentPlayer", 0)), 0, players.size() - 1)
+	turn_score = int(game_state.get("turnScore", 0))
+	_online_display_turn_score = int(game_state.get("displayTurnScore", turn_score))
+	dice_to_roll = int(game_state.get("diceToRoll", 6))
+	current_roll.clear()
+	for value in game_state.get("currentRoll", []):
+		current_roll.append(int(value))
+	locked_indices.clear()
+	for value in game_state.get("lockedIndices", []):
+		locked_indices.append(int(value))
+	locked_batches.clear()
+	for raw_batch in game_state.get("lockedBatches", []):
+		var batch: Array[int] = []
+		for value in raw_batch:
+			batch.append(int(value))
+		locked_batches.append(batch)
+	go_for_used = bool(game_state.get("goForUsed", false))
+	rescue_mode = bool(game_state.get("rescueMode", false))
+	hot_hand_ready = bool(game_state.get("hotHandReady", false))
+	awaiting_next_player = bool(game_state.get("awaitingNextPlayer", false))
+	game_over = bool(game_state.get("gameOver", false))
+	_status_label.text = String(game_state.get("status", ""))
+	_roll_detail_label.text = String(game_state.get("rollDetail", ""))
+	_selection_label.text = String(game_state.get("selection", ""))
+	_activity_log.clear()
+	for entry in game_state.get("activity", []):
+		_activity_log.append_text(String(entry) + "\n\n")
+	_setup_overlay.hide()
+	if current_roll.is_empty():
+		_clear_dice()
+	else:
+		var suggested := PackedInt32Array()
+		for value in game_state.get("suggestedIndices", []):
+			suggested.append(int(value))
+		_show_hand_dice(suggested)
+
+	if game_over:
+		var winner_id := String(game_state.get("winnerId", ""))
+		var winner: Dictionary = players[current_player]
+		for player in players:
+			if String(player.get("id", "")) == winner_id:
+				winner = player
+				break
+		_winner_label.text = "%s wins with %s points!" % [winner.name, _number(winner.score)]
+		var is_host := String(_online_room.get("hostId", "")) == _online_user_id()
+		_again_button.text = "PLAY AGAIN" if is_host else "WAITING FOR HOST"
+		_again_button.disabled = not is_host
+		_winner_overlay.show()
+	else:
+		_winner_overlay.hide()
+	_update_all_ui()
+
+
+func _toggle_online_ready() -> void:
+	var self_player := _online_self_player()
+	if self_player.is_empty():
+		return
+	_web_bridge.call("send_room_command", "set_ready", {
+		"ready": not bool(self_player.get("ready", false)),
+	})
+
+
+func _on_online_name_submitted(_value: String) -> void:
+	_submit_online_name()
+
+
+func _submit_online_name() -> void:
+	if not _online_mode:
+		return
+	var name := _online_name_edit.text.strip_edges()
+	if name.is_empty():
+		return
+	_web_bridge.call("send_room_command", "set_name", {"name": name})
+
+
+func _on_play_again() -> void:
+	if _online_mode:
+		if String(_online_room.get("hostId", "")) == _online_user_id():
+			_web_bridge.call("send_room_command", "reset_game")
+		return
+	_show_setup()
+
+
+func _online_user_id() -> String:
+	if not _online_mode or _web_bridge == null:
+		return ""
+	return String(_web_bridge.call("current_user_id"))
+
+
+func _online_self_player() -> Dictionary:
+	var self_id := _online_user_id()
+	for player in _online_room.get("players", []):
+		if String(player.get("id", "")) == self_id:
+			return player
+	return {}
+
+
+func _is_online_local_turn() -> bool:
+	if not _online_mode or players.is_empty() or current_player < 0 or current_player >= players.size():
+		return not _online_mode
+	return String(players[current_player].get("id", "")) == _online_user_id()
+
+
 func _on_player_count_changed(value: float) -> void:
 	for index in range(_name_edits.size()):
 		_name_edits[index].visible = index < int(value)
@@ -985,7 +1278,9 @@ func _set_web_voice_visible(visible: bool) -> void:
 	if not OS.has_feature("web"):
 		return
 	JavaScriptBridge.eval(
-		"window.GamerPubVoice?.setVisible(%s);" % ("true" if visible else "false")
+		("if(window.GamerPubVoice){window.GamerPubVoice.setVisible(%s);}"
+		+ "else{window.addEventListener('gamer-pub-voice-ready',()=>window.GamerPubVoice?.setVisible(%s),{once:true});}")
+		% [("true" if visible else "false"), ("true" if visible else "false")]
 	)
 
 
