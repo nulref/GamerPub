@@ -79,26 +79,26 @@
 		left: 12px;
 		bottom: max(8px, env(safe-area-inset-bottom));
 		flex-wrap: wrap;
-		gap: 12px;
-		max-width: min(54vw, calc(100vw - 24px));
-		min-height: 96px;
-		padding: 14px;
-		border-radius: 28px;
-		font-size: 28px;
+		gap: 5px;
+		max-width: min(40vw, calc(100vw - 24px));
+		min-height: 38px;
+		padding: 6px;
+		border-radius: 12px;
+		font-size: 12px;
 	}
 
 	#tenk-voice-toolbar button {
-		min-height: 80px;
-		padding: 0 20px;
-		border-radius: 20px;
+		min-height: 32px;
+		padding: 0 8px;
+		border-radius: 8px;
 	}
 
 	.tenk-microphone-icon {
-		width: 18px;
-		height: 30px;
-		margin-right: 14px;
-		border-width: 4px;
-		border-radius: 12px;
+		width: 7px;
+		height: 12px;
+		margin-right: 6px;
+		border-width: 2px;
+		border-radius: 5px;
 	}
 
 	#tenk-voice-status {
