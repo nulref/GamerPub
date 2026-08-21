@@ -177,18 +177,18 @@ func _queue_responsive_layout() -> void:
 func _apply_responsive_layout() -> void:
 	_portrait_layout = get_viewport_rect().size.y > get_viewport_rect().size.x
 	if _portrait_layout:
-		_set_margins(_screen_margin, 36, 30, 36, 210)
+		_set_margins(_screen_margin, 36, 30, 36, 500)
 		_page.add_theme_constant_override("separation", 20)
-		_header_panel.custom_minimum_size.y = 124
+		_header_panel.custom_minimum_size.y = 248
 		_header_row.add_theme_constant_override("separation", 18)
-		_back_button.custom_minimum_size = Vector2(260, 88)
-		_rules_button.custom_minimum_size = Vector2(180, 88)
-		_title_label.add_theme_font_size_override("font_size", 48)
-		_subtitle_label.add_theme_font_size_override("font_size", 18)
+		_back_button.custom_minimum_size = Vector2(260, 176)
+		_rules_button.custom_minimum_size = Vector2(180, 176)
+		_title_label.add_theme_font_size_override("font_size", 96)
+		_subtitle_label.add_theme_font_size_override("font_size", 36)
 		_turn_badge.custom_minimum_size.x = 300
-		_turn_badge.add_theme_font_size_override("font_size", 24)
+		_turn_badge.add_theme_font_size_override("font_size", 48)
 		for button in [_back_button, _rules_button]:
-			button.add_theme_font_size_override("font_size", 22)
+			button.add_theme_font_size_override("font_size", 44)
 
 		_body.columns = 1
 		_body.add_theme_constant_override("h_separation", 20)
@@ -196,27 +196,27 @@ func _apply_responsive_layout() -> void:
 		_scoreboard_panel.custom_minimum_size = Vector2(0, 410)
 		_scoreboard_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_scoreboard_panel.size_flags_vertical = Control.SIZE_FILL
-		_score_heading.add_theme_font_size_override("font_size", 28)
+		_score_heading.add_theme_font_size_override("font_size", 56)
 		_score_goal.hide()
 		_score_list.columns = 2
 		_score_list.add_theme_constant_override("h_separation", 16)
 		_score_list.add_theme_constant_override("v_separation", 12)
 
-		_table_panel.custom_minimum_size = Vector2(0, 1450)
+		_table_panel.custom_minimum_size = Vector2(0, 1800)
 		_set_margins(_table_margin, 30, 30, 30, 34)
 		_table_column.add_theme_constant_override("separation", 28)
-		_status_label.custom_minimum_size.y = 110
-		_status_label.add_theme_font_size_override("font_size", 34)
-		_turn_score_label.add_theme_font_size_override("font_size", 42)
-		_roll_detail_label.add_theme_font_size_override("font_size", 24)
+		_status_label.custom_minimum_size.y = 220
+		_status_label.add_theme_font_size_override("font_size", 68)
+		_turn_score_label.add_theme_font_size_override("font_size", 84)
+		_roll_detail_label.add_theme_font_size_override("font_size", 48)
 		_dice_center.custom_minimum_size.y = 360
 		_dice_row.add_theme_constant_override("separation", 18)
-		_selection_label.custom_minimum_size.y = 100
-		_selection_label.add_theme_font_size_override("font_size", 28)
+		_selection_label.custom_minimum_size.y = 200
+		_selection_label.add_theme_font_size_override("font_size", 56)
 		_actions.add_theme_constant_override("separation", 24)
 		for button in [_roll_button, _keep_button]:
-			button.custom_minimum_size = Vector2(350, 104)
-			button.add_theme_font_size_override("font_size", 28)
+			button.custom_minimum_size = Vector2(350, 208)
+			button.add_theme_font_size_override("font_size", 56)
 		_activity_panel.hide()
 		_footer_label.hide()
 	else:
@@ -275,17 +275,19 @@ func _apply_modal_layout() -> void:
 	_setup_panel.custom_minimum_size = Vector2(980, 1500) if _portrait_layout else Vector2(560, 650)
 	_rules_panel.custom_minimum_size = Vector2(1180, 2400) if _portrait_layout else Vector2(860, 720)
 	_winner_panel.custom_minimum_size = Vector2(900, 760) if _portrait_layout else Vector2(580, 360)
-	_rules_text_label.add_theme_font_size_override("normal_font_size", 26 if _portrait_layout else 17)
-	_rules_text_label.add_theme_font_size_override("bold_font_size", 28 if _portrait_layout else 18)
-	_player_count.custom_minimum_size.y = 84 if _portrait_layout else 44
-	_online_name_edit.custom_minimum_size.y = 84 if _portrait_layout else 44
-	_online_name_edit.add_theme_font_size_override("font_size", 26 if _portrait_layout else 16)
+	_rules_text_label.add_theme_font_size_override("normal_font_size", 52 if _portrait_layout else 17)
+	_rules_text_label.add_theme_font_size_override("bold_font_size", 56 if _portrait_layout else 18)
+	_setup_intro.add_theme_font_size_override("font_size", 32 if _portrait_layout else 16)
+	_winner_label.add_theme_font_size_override("font_size", 56 if _portrait_layout else 28)
+	_player_count.custom_minimum_size.y = 168 if _portrait_layout else 44
+	_online_name_edit.custom_minimum_size.y = 168 if _portrait_layout else 44
+	_online_name_edit.add_theme_font_size_override("font_size", 52 if _portrait_layout else 16)
 	for edit in _name_edits:
-		edit.custom_minimum_size.y = 84 if _portrait_layout else 44
-		edit.add_theme_font_size_override("font_size", 26 if _portrait_layout else 16)
+		edit.custom_minimum_size.y = 168 if _portrait_layout else 44
+		edit.add_theme_font_size_override("font_size", 52 if _portrait_layout else 16)
 	for button in _modal_buttons:
-		button.custom_minimum_size.y = 92 if _portrait_layout else 52
-		button.add_theme_font_size_override("font_size", 26 if _portrait_layout else 16)
+		button.custom_minimum_size.y = 184 if _portrait_layout else 52
+		button.add_theme_font_size_override("font_size", 52 if _portrait_layout else 16)
 
 
 func _set_margins(container: MarginContainer, left: int, top: int, right: int, bottom: int) -> void:
@@ -955,16 +957,16 @@ func _update_scoreboard() -> void:
 		var box := HBoxContainer.new()
 		box.add_theme_constant_override("separation", 8)
 		row.add_child(box)
-		var marker := _make_label("●" if active else "○", 22 if _portrait_layout else 14, Color("f0c45b") if active else Color("756a61"))
+		var marker := _make_label("●" if active else "○", 44 if _portrait_layout else 14, Color("f0c45b") if active else Color("756a61"))
 		box.add_child(marker)
-		var name_label := _make_label(player.name, 25 if _portrait_layout else 16, Color("fff0cd") if active else Color("d3c8b5"))
+		var name_label := _make_label(player.name, 50 if _portrait_layout else 16, Color("fff0cd") if active else Color("d3c8b5"))
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		box.add_child(name_label)
 		var score_text := _number(player.score)
 		if not player.on_board:
 			score_text = "—"
-		var score_label := _make_label(score_text, 27 if _portrait_layout else 18, Color("f1ca67") if active else Color("b9aa8d"))
+		var score_label := _make_label(score_text, 54 if _portrait_layout else 18, Color("f1ca67") if active else Color("b9aa8d"))
 		box.add_child(score_label)
 		_score_list.add_child(row)
 

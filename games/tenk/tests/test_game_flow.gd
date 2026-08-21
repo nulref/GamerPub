@@ -225,11 +225,17 @@ func _run() -> void:
 	assert(game._score_list.columns == 2)
 	assert(not game._activity_panel.visible)
 	assert(not game._footer_label.visible)
-	assert(game._screen_margin.get_theme_constant("margin_bottom") == 210)
-	assert(game._roll_button.custom_minimum_size.y == 104)
+	assert(game._screen_margin.get_theme_constant("margin_bottom") == 500)
+	assert(game._roll_button.custom_minimum_size.y == 208)
+	assert(game._roll_button.get_theme_font_size("font_size") == 56)
 	for die in game._dice_row.get_children():
 		assert((die as Button).custom_minimum_size == Vector2(170, 170))
 	root.size = Vector2i(1600, 900)
+	await process_frame
+	game._apply_responsive_layout()
+	assert(not game._portrait_layout)
+	assert(game._roll_button.custom_minimum_size.y == 58)
+	assert(game._roll_button.get_theme_font_size("font_size") == 16)
 
 	assert(game.find_child("BackToLauncherButton", true, false) != null)
 	assert(game.find_child("RulesOverlay", true, false) != null)
