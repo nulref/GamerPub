@@ -8,5 +8,5 @@
   for = "/*"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
-    Permissions-Policy = "microphone=()"
+    Permissions-Policy = "microphone=(self)"
     X-Content-Type-Options = "nosniff"

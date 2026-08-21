@@ -14,7 +14,7 @@ The launcher currently includes:
 
 Joker supports local play against bots and retains its Discord multiplayer bridge. Multiplayer is available only when the exported game is hosted by Joker's Discord Activity shell.
 
-10,000 supports 2–8 local hot-seat players, interactive dice selection, the 1,000-point opening requirement, hot dice, and the Gamer Pub "go for it" house rule.
+Tenk supports 2–8 local hot-seat players, interactive dice selection, the 1,000-point opening requirement, hot dice, the Gamer Pub "go for it" house rule, and optional eight-person browser voice chat on the hosted Web build.
 
 ## Technology
 
@@ -67,7 +67,7 @@ From Joker's menu, **Back to Gamer Pub** returns to the launcher.
 
 ## Netlify play-test build
 
-The repository includes a single-threaded Godot Web preset and a prebuilt `dist/` bundle. Netlify serves that directory directly; it does not need Godot installed during deployment. Microphone access is explicitly disabled because the current play test has no voice communication.
+The repository includes a single-threaded Godot Web preset and a prebuilt `dist/` bundle. Netlify serves that directory directly; it does not need Godot installed during deployment. The export script adds Tenk's browser voice toolbar and copies its WebRTC client into the bundle. Voice is optional, appears only while Tenk is open, and supports up to eight people through Joker's existing signaling worker.
 
 To refresh the browser bundle after changing the game, install the Godot 4.7.1 export templates and run:
 
@@ -82,6 +82,8 @@ If Godot is not on `PATH`, pass its executable explicitly:
 ```
 
 Commit the regenerated files in `dist/` before pushing. Joker multiplayer is disabled on the standalone Netlify build and becomes available only inside its Discord Activity wrapper; Joker single-player and 10,000 local hot-seat play remain available.
+
+The production voice worker must allow `https://gamerpub.netlify.app` as an exact WebSocket origin and expose `/voice/tenk`. Netlify's response headers allow microphone capture from the Gamer Pub origin only.
 
 ## 10,000 controls
 

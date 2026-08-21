@@ -72,11 +72,16 @@ var _portrait_layout := false
 
 
 func _ready() -> void:
+	_set_web_voice_visible(true)
 	randomize()
 	_build_interface()
 	get_viewport().size_changed.connect(_queue_responsive_layout)
 	_apply_responsive_layout()
 	_show_setup()
+
+
+func _exit_tree() -> void:
+	_set_web_voice_visible(false)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -972,7 +977,16 @@ func _close_rules() -> void:
 
 
 func back_to_launcher() -> void:
+	_set_web_voice_visible(false)
 	get_tree().change_scene_to_file(LAUNCHER_SCENE)
+
+
+func _set_web_voice_visible(visible: bool) -> void:
+	if not OS.has_feature("web"):
+		return
+	JavaScriptBridge.eval(
+		"window.GamerPubVoice?.setVisible(%s);" % ("true" if visible else "false")
+	)
 
 
 func _random_dice(count: int) -> Array[int]:
