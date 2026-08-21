@@ -151,23 +151,23 @@ static func score_persistent_hand(locked_batches: Array, selected_batch: Array[i
 		for pair_batch in range(batch_counts.size()):
 			if int(batch_counts[pair_batch][face]) != 2:
 				continue
-			for matching_batch in range(pair_batch + 1, batch_counts.size()):
-				if int(batch_counts[matching_batch][face]) < 1:
-					continue
-				var cross_score := 1000 if face == 1 else face * 100
-				var cross_count := 3
-				for batch_index in range(batch_counts.size()):
-					var remaining := int(batch_counts[batch_index][face])
-					if batch_index == pair_batch:
-						remaining -= 2
-					elif batch_index == matching_batch:
-						remaining -= 1
-					var remaining_result := _score_face_count(face, remaining)
-					cross_score += remaining_result.score
-					cross_count += remaining_result.scoring_count
-				if cross_score > best_face_score or (cross_score == best_face_score and cross_count > best_face_count):
-					best_face_score = cross_score
-					best_face_count = cross_count
+			var matching_batch := pair_batch + 1
+			if matching_batch >= batch_counts.size() or int(batch_counts[matching_batch][face]) < 1:
+				continue
+			var cross_score := 1000 if face == 1 else face * 100
+			var cross_count := 3
+			for batch_index in range(batch_counts.size()):
+				var remaining := int(batch_counts[batch_index][face])
+				if batch_index == pair_batch:
+					remaining -= 2
+				elif batch_index == matching_batch:
+					remaining -= 1
+				var remaining_result := _score_face_count(face, remaining)
+				cross_score += remaining_result.score
+				cross_count += remaining_result.scoring_count
+			if cross_score > best_face_score or (cross_score == best_face_score and cross_count > best_face_count):
+				best_face_score = cross_score
+				best_face_count = cross_count
 
 		total_score += best_face_score
 		total_count += best_face_count

@@ -122,6 +122,15 @@ func _run() -> void:
 	game._show_hand_dice(PackedInt32Array([4]))
 	assert(game._current_hand_score() == 1000)
 
+	game.turn_score = 0
+	game.current_roll = [1, 1, 1, 1, 5, 6]
+	game.locked_indices = PackedInt32Array([2, 3, 4])
+	game.locked_batches = [[1, 1], [5]]
+	game._show_hand_dice(PackedInt32Array([0, 1]))
+	game._update_selection_preview()
+	assert(game._current_hand_score() == 450)
+	assert(game._turn_score_label.text == "TURN SCORE  450")
+
 	# A scoring final die still busts when it fails to finish a locked partial
 	# combination, instead of leaving the turn with both actions disabled.
 	game.turn_score = 0

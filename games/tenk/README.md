@@ -10,7 +10,7 @@ This folder contains Gamer Pub's local hot-seat version of the six-die game 10,0
 - Single 1s score 100 and single 5s score 50.
 - Three 1s score 1,000; other triples score face value × 100.
 - Each matching die after the third doubles the set's score.
-- Matching sets must be rolled together. The exception is a locked pair: one matching die on a later roll completes its triple; other matching dice from separate rolls retain their single-die value, if any.
+- Matching sets must be rolled together. The exception is a locked pair: one matching die on the immediately following roll completes its triple. If that next roll misses, later matching dice retain their single-die value, if any.
 - A straight scores 1,500.
 - Three pairs, four-of-a-kind plus a pair, and two triplets score 1,000.
 - When all six dice score, all six become available again ("and rolling" or hot dice).

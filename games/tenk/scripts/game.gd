@@ -911,7 +911,7 @@ Your first banked turn must be worth at least 1,000 points. After that, you may 
 • Three 1s: 1,000
 • Three of 2–6: face value × 100
 • Every matching die beyond three doubles that set: four 4s = 800, five 4s = 1,600, six 4s = 3,200
-• Matching sets must be rolled together. A locked pair is the exception: one matching die on a later roll completes its triple.
+• Matching sets must be rolled together. A locked pair is the exception: one matching die on the immediately following roll completes its triple.
 • Straight (1–6): 1,500
 • Three pairs: 1,000. Four-of-a-kind plus a pair and two triplets also count.
 

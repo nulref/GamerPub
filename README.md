@@ -86,7 +86,7 @@ Commit the regenerated files in `dist/` before pushing. Joker multiplayer is dis
 ## 10,000 controls
 
 - Select scoring dice or a qualifying partial combination, then choose **Reroll** to lock them and reroll every unselected die in place.
-- Matching sets score within one roll; a locked pair may be completed by one matching die from a later roll.
+- Matching sets score within one roll; a locked pair may be completed by one matching die on the immediately following roll.
 - Choose **Keep It** to bank an eligible turn and pass the dice.
 - Press <kbd>Space</kbd> or <kbd>Enter</kbd> to roll or reroll.
 
