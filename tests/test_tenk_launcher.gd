@@ -6,6 +6,7 @@ const TENK_SCENE_PATH := "res://games/tenk/scenes/game.tscn"
 
 
 func _init() -> void:
+	assert(ProjectSettings.get_setting("application/config/icon") == "res://launcher/assets/art/gp_logo.webp")
 	call_deferred("_run")
 
 
