@@ -30,6 +30,7 @@ func _run() -> void:
 	game.turn_score = 0
 	game.current_roll = [1, 2, 3, 4, 5, 6]
 	game.locked_indices.clear()
+	game.locked_batches.clear()
 	game._show_hand_dice(PackedInt32Array([0, 1, 2, 3, 4, 5]))
 	game._reroll_unselected_dice()
 	assert(game.turn_score == 1500)
@@ -54,6 +55,7 @@ func _run() -> void:
 	assert(game._can_bank())
 	game.current_roll = [5, 2, 3, 4, 6, 2]
 	game.locked_indices.clear()
+	game.locked_batches.clear()
 	game.hot_hand_ready = false
 	game._show_hand_dice(PackedInt32Array([0]))
 	game._update_controls()
@@ -70,12 +72,14 @@ func _run() -> void:
 	game.rescue_mode = false
 	game.hot_hand_ready = false
 	game.locked_indices.clear()
+	game.locked_batches.clear()
 	game.current_roll = [4, 6, 4, 2, 4, 4]
 	game._show_hand_dice(PackedInt32Array([0, 2, 4, 5]))
 	game._update_selection_preview()
 	assert(game._roll_button.text == "REROLL")
 	assert(not game._roll_button.disabled)
 	game.locked_indices = PackedInt32Array([0, 2, 4, 5])
+	game.locked_batches = [[4, 4, 4, 4]]
 	game.current_roll[1] = 3
 	game.current_roll[3] = 5
 	game._show_hand_dice(PackedInt32Array([3]))
@@ -84,6 +88,7 @@ func _run() -> void:
 	assert(game._current_hand_score() == 850)
 	game.locked_indices.append(3)
 	game.locked_indices.sort()
+	game.locked_batches.append([5])
 	game.current_roll[1] = 1
 	game._show_hand_dice(PackedInt32Array([1]))
 	assert(game._current_hand_score() == 950)
@@ -96,11 +101,33 @@ func _run() -> void:
 	for die in game._dice_row.get_children():
 		assert((die as Button).disabled)
 
+	# Matching dice from separate rerolls remain singles unless a carried pair
+	# is completed by one matching die on a later roll.
+	game.turn_score = 400
+	game.dice_to_roll = 4
+	game.awaiting_next_player = false
+	game.hot_hand_ready = false
+	game.rescue_mode = false
+	game.current_roll = [1, 1, 5, 6, 1, 2]
+	game.locked_indices = PackedInt32Array([2, 4])
+	game.locked_batches = [[1, 5]]
+	game._show_hand_dice(PackedInt32Array([0, 1]))
+	game._update_selection_preview()
+	assert(game._current_hand_score() == 350)
+	assert(game._turn_score_label.text == "TURN SCORE  750")
+
+	game.current_roll = [1, 5, 1, 6, 1, 3]
+	game.locked_indices = PackedInt32Array([0, 2])
+	game.locked_batches = [[1, 1]]
+	game._show_hand_dice(PackedInt32Array([4]))
+	assert(game._current_hand_score() == 1000)
+
 	# The player-directed one-time reroll remains available as a no-score rescue.
 	game.turn_score = 0
 	game.dice_to_roll = 6
 	game.current_roll = [2, 2, 3, 3, 4, 6]
 	game.locked_indices.clear()
+	game.locked_batches.clear()
 	game.go_for_used = false
 	game.awaiting_next_player = false
 	game.hot_hand_ready = false

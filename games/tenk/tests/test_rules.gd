@@ -7,6 +7,7 @@ func _init() -> void:
 	_test_singles_and_mixed_scores()
 	_test_best_selection()
 	_test_reroll_lock_eligibility()
+	_test_persistent_hand_scoring()
 	print("PASS: 10,000 scoring rules")
 	quit()
 
@@ -60,6 +61,27 @@ func _test_reroll_lock_eligibility() -> void:
 	assert(TenkRules.can_lock_for_reroll([1, 2, 3, 4, 6], [5]))
 	assert(not TenkRules.can_lock_for_reroll([], [4, 4]))
 	assert(not TenkRules.can_lock_for_reroll([], [2, 3, 4, 6]))
+
+
+func _test_persistent_hand_scoring() -> void:
+	var result := TenkRules.score_persistent_hand([[1, 5], [1, 1]])
+	assert(result.score == 350)
+	assert(result.scoring_count == 4)
+	result = TenkRules.score_persistent_hand([[1, 1], [1]])
+	assert(result.score == 1000)
+	assert(result.scoring_count == 3)
+	result = TenkRules.score_persistent_hand([[1], [1, 1]])
+	assert(result.score == 300)
+	result = TenkRules.score_persistent_hand([[4, 4], [4]])
+	assert(result.score == 400)
+	result = TenkRules.score_persistent_hand([[4, 4, 4], [4]])
+	assert(result.score == 400)
+	result = TenkRules.score_persistent_hand([[1, 2, 3, 4, 6], [5]])
+	assert(result.score == 1500)
+	assert(result.all_scoring)
+	result = TenkRules.score_persistent_hand([[4, 4, 4, 4], [5], [1]])
+	assert(result.score == 950)
+	assert(result.all_scoring)
 
 
 func _assert_score(dice: Array[int], expected: int) -> void:

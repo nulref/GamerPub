@@ -21,6 +21,7 @@ var turn_score := 0
 var dice_to_roll := 6
 var current_roll: Array[int] = []
 var locked_indices := PackedInt32Array()
+var locked_batches: Array = []
 var go_for_used := false
 var rescue_mode := false
 var hot_hand_ready := false
@@ -419,6 +420,7 @@ func _begin_turn() -> void:
 	dice_to_roll = 6
 	current_roll.clear()
 	locked_indices.clear()
+	locked_batches.clear()
 	go_for_used = false
 	rescue_mode = false
 	hot_hand_ready = false
@@ -438,6 +440,7 @@ func _on_roll_pressed() -> void:
 	if current_roll.is_empty() or hot_hand_ready:
 		hot_hand_ready = false
 		locked_indices.clear()
+		locked_batches.clear()
 		current_roll = _random_dice(6)
 		dice_to_roll = 6
 		_present_hand(turn_score == 0 and not go_for_used)
@@ -482,16 +485,18 @@ func _on_keep_pressed() -> void:
 
 func _reroll_unselected_dice() -> void:
 	var selected := _selected_indices()
-	if selected.is_empty() or not RULES.can_lock_for_reroll(_locked_values(), _selected_values()):
+	var selected_values := _selected_values()
+	if selected.is_empty() or not RULES.can_lock_for_reroll(_locked_values(), selected_values):
 		return
+	locked_batches.append(selected_values.duplicate())
 	for index in selected:
 		if not locked_indices.has(index):
 			locked_indices.append(index)
 	locked_indices.sort()
 
 	if locked_indices.size() == 6:
-		var full_score := RULES.score_selection(current_roll)
-		if not full_score.valid:
+		var full_score := RULES.score_persistent_hand(locked_batches)
+		if not full_score.valid or not full_score.all_scoring:
 			_finish_bust("The completed hand does not score — bust!")
 			return
 		turn_score += full_score.score
@@ -558,9 +563,7 @@ func _best_lock_candidate() -> PackedInt32Array:
 		if not RULES.can_lock_for_reroll(_locked_values(), values):
 			continue
 		var exact := RULES.score_selection(values)
-		var combined := _locked_values()
-		combined.append_array(values)
-		var combined_score := RULES.score_selection(combined)
+		var combined_score := RULES.score_persistent_hand(locked_batches, values)
 		var priority := -candidate.size()
 		if exact.valid:
 			priority += 10_000 + exact.score
@@ -592,6 +595,7 @@ func _finish_scoring_turn(reason: String) -> void:
 
 	current_roll.clear()
 	locked_indices.clear()
+	locked_batches.clear()
 	hot_hand_ready = false
 	rescue_mode = false
 	awaiting_next_player = true
@@ -686,9 +690,7 @@ func _active_indices() -> PackedInt32Array:
 func _current_hand_score() -> int:
 	if hot_hand_ready:
 		return 0
-	var held := _locked_values()
-	held.append_array(_selected_values())
-	return int(RULES.best_scoring_selection(held).score)
+	return int(RULES.score_persistent_hand(locked_batches, _selected_values()).score)
 
 
 func _update_all_ui() -> void:
@@ -764,9 +766,8 @@ func _update_controls() -> void:
 		var selected := _selected_values()
 		var reroll_eligible := RULES.can_lock_for_reroll(_locked_values(), selected)
 		if _selected_indices().size() == _active_indices().size():
-			var completed_hand := _locked_values()
-			completed_hand.append_array(selected)
-			reroll_eligible = RULES.score_selection(completed_hand).valid
+			var completed_hand := RULES.score_persistent_hand(locked_batches, selected)
+			reroll_eligible = completed_hand.valid and completed_hand.all_scoring
 		_roll_button.disabled = not reroll_eligible
 
 	_keep_button.text = "KEEP IT"
@@ -908,6 +909,7 @@ Your first banked turn must be worth at least 1,000 points. After that, you may 
 • Three 1s: 1,000
 • Three of 2–6: face value × 100
 • Every matching die beyond three doubles that set: four 4s = 800, five 4s = 1,600, six 4s = 3,200
+• Matching sets must be rolled together. A locked pair is the exception: one matching die on a later roll completes its triple.
 • Straight (1–6): 1,500
 • Three pairs: 1,000. Four-of-a-kind plus a pair and two triplets also count.
 
