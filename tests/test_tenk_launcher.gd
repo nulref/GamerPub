@@ -20,6 +20,14 @@ func _run() -> void:
 	var cards: HBoxContainer = launcher.get_node("%Cards")
 	assert(cards.get_child_count() == 10)
 	assert(cards.get_child(1).game_id == &"tenk")
+	root.size = Vector2i(900, 1600)
+	await process_frame
+	await process_frame
+	launcher._update_card_layout()
+	assert(launcher._portrait_layout)
+	assert(launcher._visible_count == 2)
+	assert(cards.get_child(0).custom_minimum_size.y == 400)
+	assert(launcher.previous_button.custom_minimum_size == Vector2(130, 190))
 	launcher._on_game_selected(&"tenk")
 	await process_frame
 	await process_frame
@@ -35,6 +43,7 @@ func _run() -> void:
 
 	assert(current_scene != null)
 	assert(current_scene.scene_file_path == LAUNCHER_SCENE_PATH)
+	root.size = Vector2i(1600, 900)
 	print("PASS: launcher opens 10,000 and 10,000 returns to Gamer Pub")
 	current_scene.queue_free()
 	current_scene = null

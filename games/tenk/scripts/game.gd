@@ -28,7 +28,7 @@ var hot_hand_ready := false
 var awaiting_next_player := false
 var game_over := false
 
-var _score_list: VBoxContainer
+var _score_list: GridContainer
 var _turn_badge: Label
 var _status_label: Label
 var _turn_score_label: Label
@@ -44,11 +44,38 @@ var _name_edits: Array[LineEdit] = []
 var _rules_overlay: Control
 var _winner_overlay: Control
 var _winner_label: Label
+var _screen_margin: MarginContainer
+var _page: VBoxContainer
+var _header_panel: PanelContainer
+var _header_row: HBoxContainer
+var _back_button: Button
+var _title_label: Label
+var _subtitle_label: Label
+var _rules_button: Button
+var _body: GridContainer
+var _scoreboard_panel: PanelContainer
+var _score_heading: Label
+var _score_goal: Label
+var _table_panel: PanelContainer
+var _table_margin: MarginContainer
+var _table_column: VBoxContainer
+var _dice_center: CenterContainer
+var _actions: HBoxContainer
+var _activity_panel: PanelContainer
+var _footer_label: Label
+var _setup_panel: PanelContainer
+var _rules_panel: PanelContainer
+var _rules_text_label: RichTextLabel
+var _winner_panel: PanelContainer
+var _modal_buttons: Array[Button] = []
+var _portrait_layout := false
 
 
 func _ready() -> void:
 	randomize()
 	_build_interface()
+	get_viewport().size_changed.connect(_queue_responsive_layout)
+	_apply_responsive_layout()
 	_show_setup()
 
 
@@ -78,33 +105,32 @@ func _build_interface() -> void:
 	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(glow)
 
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 26)
-	margin.add_theme_constant_override("margin_top", 22)
-	margin.add_theme_constant_override("margin_right", 26)
-	margin.add_theme_constant_override("margin_bottom", 22)
-	add_child(margin)
+	_screen_margin = MarginContainer.new()
+	_screen_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_set_margins(_screen_margin, 26, 22, 26, 22)
+	add_child(_screen_margin)
 
-	var page := VBoxContainer.new()
-	page.add_theme_constant_override("separation", 18)
-	margin.add_child(page)
-	page.add_child(_build_header())
+	_page = VBoxContainer.new()
+	_page.add_theme_constant_override("separation", 18)
+	_screen_margin.add_child(_page)
+	_page.add_child(_build_header())
 
-	var body := HBoxContainer.new()
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	body.add_theme_constant_override("separation", 18)
-	page.add_child(body)
-	body.add_child(_build_scoreboard())
-	body.add_child(_build_table())
-	body.add_child(_build_activity_panel())
+	_body = GridContainer.new()
+	_body.columns = 3
+	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_body.add_theme_constant_override("h_separation", 18)
+	_body.add_theme_constant_override("v_separation", 18)
+	_page.add_child(_body)
+	_body.add_child(_build_scoreboard())
+	_body.add_child(_build_table())
+	_body.add_child(_build_activity_panel())
 
-	var footer := Label.new()
-	footer.text = "SPACE / ENTER rolls or rerolls  •  Selected dice lock in place  •  Reach 1,000 in one turn to get on the board"
-	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	footer.add_theme_color_override("font_color", Color("b8aa91"))
-	footer.add_theme_font_size_override("font_size", 14)
-	page.add_child(footer)
+	_footer_label = Label.new()
+	_footer_label.text = "SPACE / ENTER rolls or rerolls  •  Selected dice lock in place  •  Reach 1,000 in one turn to get on the board"
+	_footer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_footer_label.add_theme_color_override("font_color", Color("b8aa91"))
+	_footer_label.add_theme_font_size_override("font_size", 14)
+	_page.add_child(_footer_label)
 
 	_setup_overlay = _build_setup_overlay()
 	add_child(_setup_overlay)
@@ -114,126 +140,252 @@ func _build_interface() -> void:
 	add_child(_winner_overlay)
 
 
+func _queue_responsive_layout() -> void:
+	_apply_responsive_layout.call_deferred()
+
+
+func _apply_responsive_layout() -> void:
+	_portrait_layout = get_viewport_rect().size.y > get_viewport_rect().size.x
+	if _portrait_layout:
+		_set_margins(_screen_margin, 36, 30, 36, 210)
+		_page.add_theme_constant_override("separation", 20)
+		_header_panel.custom_minimum_size.y = 124
+		_header_row.add_theme_constant_override("separation", 18)
+		_back_button.custom_minimum_size = Vector2(260, 88)
+		_rules_button.custom_minimum_size = Vector2(180, 88)
+		_title_label.add_theme_font_size_override("font_size", 48)
+		_subtitle_label.add_theme_font_size_override("font_size", 18)
+		_turn_badge.custom_minimum_size.x = 300
+		_turn_badge.add_theme_font_size_override("font_size", 24)
+		for button in [_back_button, _rules_button]:
+			button.add_theme_font_size_override("font_size", 22)
+
+		_body.columns = 1
+		_body.add_theme_constant_override("h_separation", 20)
+		_body.add_theme_constant_override("v_separation", 20)
+		_scoreboard_panel.custom_minimum_size = Vector2(0, 410)
+		_scoreboard_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_scoreboard_panel.size_flags_vertical = Control.SIZE_FILL
+		_score_heading.add_theme_font_size_override("font_size", 28)
+		_score_goal.hide()
+		_score_list.columns = 2
+		_score_list.add_theme_constant_override("h_separation", 16)
+		_score_list.add_theme_constant_override("v_separation", 12)
+
+		_table_panel.custom_minimum_size = Vector2(0, 1450)
+		_set_margins(_table_margin, 30, 30, 30, 34)
+		_table_column.add_theme_constant_override("separation", 28)
+		_status_label.custom_minimum_size.y = 110
+		_status_label.add_theme_font_size_override("font_size", 34)
+		_turn_score_label.add_theme_font_size_override("font_size", 42)
+		_roll_detail_label.add_theme_font_size_override("font_size", 24)
+		_dice_center.custom_minimum_size.y = 360
+		_dice_row.add_theme_constant_override("separation", 18)
+		_selection_label.custom_minimum_size.y = 100
+		_selection_label.add_theme_font_size_override("font_size", 28)
+		_actions.add_theme_constant_override("separation", 24)
+		for button in [_roll_button, _keep_button]:
+			button.custom_minimum_size = Vector2(350, 104)
+			button.add_theme_font_size_override("font_size", 28)
+		_activity_panel.hide()
+		_footer_label.hide()
+	else:
+		_set_margins(_screen_margin, 26, 22, 26, 22)
+		_page.add_theme_constant_override("separation", 18)
+		_header_panel.custom_minimum_size.y = 76
+		_header_row.add_theme_constant_override("separation", 16)
+		_back_button.custom_minimum_size = Vector2(190, 0)
+		_rules_button.custom_minimum_size = Vector2(130, 0)
+		_title_label.add_theme_font_size_override("font_size", 34)
+		_subtitle_label.add_theme_font_size_override("font_size", 12)
+		_turn_badge.custom_minimum_size.x = 270
+		_turn_badge.add_theme_font_size_override("font_size", 18)
+		for button in [_back_button, _rules_button]:
+			button.add_theme_font_size_override("font_size", 16)
+
+		_body.columns = 3
+		_body.add_theme_constant_override("h_separation", 18)
+		_body.add_theme_constant_override("v_separation", 18)
+		_scoreboard_panel.custom_minimum_size = Vector2(300, 0)
+		_scoreboard_panel.size_flags_horizontal = Control.SIZE_FILL
+		_scoreboard_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		_score_heading.add_theme_font_size_override("font_size", 20)
+		_score_goal.show()
+		_score_list.columns = 1
+		_score_list.add_theme_constant_override("h_separation", 12)
+		_score_list.add_theme_constant_override("v_separation", 9)
+
+		_table_panel.custom_minimum_size = Vector2.ZERO
+		_set_margins(_table_margin, 30, 30, 30, 30)
+		_table_column.add_theme_constant_override("separation", 17)
+		_status_label.custom_minimum_size.y = 60
+		_status_label.add_theme_font_size_override("font_size", 22)
+		_turn_score_label.add_theme_font_size_override("font_size", 27)
+		_roll_detail_label.add_theme_font_size_override("font_size", 15)
+		_dice_center.custom_minimum_size.y = 184
+		_dice_row.add_theme_constant_override("separation", 12)
+		_selection_label.custom_minimum_size.y = 44
+		_selection_label.add_theme_font_size_override("font_size", 16)
+		_actions.add_theme_constant_override("separation", 12)
+		for button in [_roll_button, _keep_button]:
+			button.custom_minimum_size = Vector2(220, 58)
+			button.add_theme_font_size_override("font_size", 16)
+		_activity_panel.show()
+		_footer_label.show()
+
+	for die in _dice_row.get_children():
+		if die is Button:
+			die.custom_minimum_size = Vector2(170, 170) if _portrait_layout else Vector2(112, 112)
+	_apply_modal_layout()
+	if not players.is_empty():
+		_update_scoreboard()
+
+
+func _apply_modal_layout() -> void:
+	_setup_panel.custom_minimum_size = Vector2(980, 1500) if _portrait_layout else Vector2(560, 650)
+	_rules_panel.custom_minimum_size = Vector2(1180, 2400) if _portrait_layout else Vector2(860, 720)
+	_winner_panel.custom_minimum_size = Vector2(900, 760) if _portrait_layout else Vector2(580, 360)
+	_rules_text_label.add_theme_font_size_override("normal_font_size", 26 if _portrait_layout else 17)
+	_rules_text_label.add_theme_font_size_override("bold_font_size", 28 if _portrait_layout else 18)
+	_player_count.custom_minimum_size.y = 84 if _portrait_layout else 44
+	for edit in _name_edits:
+		edit.custom_minimum_size.y = 84 if _portrait_layout else 44
+		edit.add_theme_font_size_override("font_size", 26 if _portrait_layout else 16)
+	for button in _modal_buttons:
+		button.custom_minimum_size.y = 92 if _portrait_layout else 52
+		button.add_theme_font_size_override("font_size", 26 if _portrait_layout else 16)
+
+
+func _set_margins(container: MarginContainer, left: int, top: int, right: int, bottom: int) -> void:
+	container.add_theme_constant_override("margin_left", left)
+	container.add_theme_constant_override("margin_top", top)
+	container.add_theme_constant_override("margin_right", right)
+	container.add_theme_constant_override("margin_bottom", bottom)
+
+
 func _build_header() -> Control:
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size.y = 76
-	panel.add_theme_stylebox_override("panel", _panel_style(Color("211728"), Color("694b38"), 18))
+	_header_panel = PanelContainer.new()
+	_header_panel.custom_minimum_size.y = 76
+	_header_panel.add_theme_stylebox_override("panel", _panel_style(Color("211728"), Color("694b38"), 18))
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
-	panel.add_child(row)
+	_header_row = HBoxContainer.new()
+	_header_row.add_theme_constant_override("separation", 16)
+	_header_panel.add_child(_header_row)
 
-	var back := _make_button("‹  GAMER PUB", false)
-	back.name = "BackToLauncherButton"
-	back.custom_minimum_size.x = 190
-	back.pressed.connect(back_to_launcher)
-	row.add_child(back)
+	_back_button = _make_button("‹  GAMER PUB", false)
+	_back_button.name = "BackToLauncherButton"
+	_back_button.custom_minimum_size.x = 190
+	_back_button.pressed.connect(back_to_launcher)
+	_header_row.add_child(_back_button)
 
 	var title_box := VBoxContainer.new()
 	title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_child(title_box)
-	var title := _make_label("10,000", 34, Color("f6d37a"))
-	title_box.add_child(title)
-	var subtitle := _make_label("ROLL BOLDLY. BANK WISELY.", 12, Color("ad9a7a"))
-	title_box.add_child(subtitle)
+	_header_row.add_child(title_box)
+	_title_label = _make_label("10,000", 34, Color("f6d37a"))
+	title_box.add_child(_title_label)
+	_subtitle_label = _make_label("ROLL BOLDLY. BANK WISELY.", 12, Color("ad9a7a"))
+	title_box.add_child(_subtitle_label)
 
 	_turn_badge = _make_label("SET UP GAME", 18, Color("fff3ca"))
 	_turn_badge.custom_minimum_size.x = 270
 	_turn_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	row.add_child(_turn_badge)
+	_header_row.add_child(_turn_badge)
 
-	var rules_button := _make_button("RULES", false)
-	rules_button.custom_minimum_size.x = 130
-	rules_button.pressed.connect(_open_rules)
-	row.add_child(rules_button)
-	return panel
+	_rules_button = _make_button("RULES", false)
+	_rules_button.custom_minimum_size.x = 130
+	_rules_button.pressed.connect(_open_rules)
+	_header_row.add_child(_rules_button)
+	return _header_panel
 
 
 func _build_scoreboard() -> Control:
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size.x = 300
-	panel.add_theme_stylebox_override("panel", _panel_style(Color("1d1822"), Color("4f4036"), 18))
+	_scoreboard_panel = PanelContainer.new()
+	_scoreboard_panel.custom_minimum_size.x = 300
+	_scoreboard_panel.add_theme_stylebox_override("panel", _panel_style(Color("1d1822"), Color("4f4036"), 18))
 	var margin := _panel_margin(22)
-	panel.add_child(margin)
+	_scoreboard_panel.add_child(margin)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 14)
 	margin.add_child(column)
-	var heading := _make_label("SCOREBOARD", 20, Color("eac46c"))
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(heading)
+	_score_heading = _make_label("SCOREBOARD", 20, Color("eac46c"))
+	_score_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(_score_heading)
 	var rule := HSeparator.new()
 	rule.modulate = Color("765b3f")
 	column.add_child(rule)
-	_score_list = VBoxContainer.new()
+	_score_list = GridContainer.new()
+	_score_list.columns = 1
 	_score_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_score_list.add_theme_constant_override("separation", 9)
+	_score_list.add_theme_constant_override("h_separation", 12)
+	_score_list.add_theme_constant_override("v_separation", 9)
 	column.add_child(_score_list)
-	var goal := _make_label("FIRST TO 10,000 WINS", 13, Color("a9977b"))
-	goal.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(goal)
-	return panel
+	_score_goal = _make_label("FIRST TO 10,000 WINS", 13, Color("a9977b"))
+	_score_goal.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(_score_goal)
+	return _scoreboard_panel
 
 
 func _build_table() -> Control:
-	var panel := PanelContainer.new()
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", _panel_style(Color("13251e"), Color("8c6c3f"), 24, 3))
-	var margin := _panel_margin(30)
-	panel.add_child(margin)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 17)
-	margin.add_child(column)
+	_table_panel = PanelContainer.new()
+	_table_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_table_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_table_panel.add_theme_stylebox_override("panel", _panel_style(Color("13251e"), Color("8c6c3f"), 24, 3))
+	_table_margin = _panel_margin(30)
+	_table_panel.add_child(_table_margin)
+	_table_column = VBoxContainer.new()
+	_table_column.add_theme_constant_override("separation", 17)
+	_table_margin.add_child(_table_column)
 
 	_status_label = _make_label("Choose players to begin.", 22, Color("fff2c3"))
 	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_status_label.custom_minimum_size.y = 60
-	column.add_child(_status_label)
+	_table_column.add_child(_status_label)
 
 	_turn_score_label = _make_label("TURN SCORE  0", 27, Color("f2c95f"))
 	_turn_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(_turn_score_label)
+	_table_column.add_child(_turn_score_label)
 
 	_roll_detail_label = _make_label("Six dice are ready.", 15, Color("bcd2c6"))
 	_roll_detail_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(_roll_detail_label)
+	_table_column.add_child(_roll_detail_label)
 
-	var dice_center := CenterContainer.new()
-	dice_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	dice_center.custom_minimum_size.y = 184
-	column.add_child(dice_center)
+	_dice_center = CenterContainer.new()
+	_dice_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_dice_center.custom_minimum_size.y = 184
+	_table_column.add_child(_dice_center)
 	_dice_row = HBoxContainer.new()
 	_dice_row.add_theme_constant_override("separation", 12)
-	dice_center.add_child(_dice_row)
+	_dice_center.add_child(_dice_row)
 
 	_selection_label = _make_label("Roll the dice to begin your turn.", 16, Color("d8ccb2"))
 	_selection_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_selection_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_selection_label.custom_minimum_size.y = 44
-	column.add_child(_selection_label)
+	_table_column.add_child(_selection_label)
 
-	var actions := HBoxContainer.new()
-	actions.alignment = BoxContainer.ALIGNMENT_CENTER
-	actions.add_theme_constant_override("separation", 12)
-	column.add_child(actions)
+	_actions = HBoxContainer.new()
+	_actions.alignment = BoxContainer.ALIGNMENT_CENTER
+	_actions.add_theme_constant_override("separation", 12)
+	_table_column.add_child(_actions)
 	_roll_button = _make_button("ROLL 6 DICE", true)
 	_roll_button.custom_minimum_size = Vector2(220, 58)
 	_roll_button.pressed.connect(_on_roll_pressed)
-	actions.add_child(_roll_button)
+	_actions.add_child(_roll_button)
 	_keep_button = _make_button("KEEP IT", false)
 	_keep_button.custom_minimum_size = Vector2(220, 58)
 	_keep_button.pressed.connect(_on_keep_pressed)
-	actions.add_child(_keep_button)
-	return panel
+	_actions.add_child(_keep_button)
+	return _table_panel
 
 
 func _build_activity_panel() -> Control:
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size.x = 300
-	panel.add_theme_stylebox_override("panel", _panel_style(Color("1d1822"), Color("4f4036"), 18))
+	_activity_panel = PanelContainer.new()
+	_activity_panel.custom_minimum_size.x = 300
+	_activity_panel.add_theme_stylebox_override("panel", _panel_style(Color("1d1822"), Color("4f4036"), 18))
 	var margin := _panel_margin(20)
-	panel.add_child(margin)
+	_activity_panel.add_child(margin)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 13)
 	margin.add_child(column)
@@ -249,18 +401,18 @@ func _build_activity_panel() -> Control:
 	_activity_log.add_theme_font_size_override("normal_font_size", 15)
 	_activity_log.add_theme_color_override("default_color", Color("d3c8b2"))
 	column.add_child(_activity_log)
-	return panel
+	return _activity_panel
 
 
 func _build_setup_overlay() -> Control:
 	var overlay := _modal_base("SetupOverlay")
 	var center: CenterContainer = overlay.get_node("Center")
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(560, 650)
-	panel.add_theme_stylebox_override("panel", _panel_style(Color("211923"), Color("d0a653"), 22, 3))
-	center.add_child(panel)
+	_setup_panel = PanelContainer.new()
+	_setup_panel.custom_minimum_size = Vector2(560, 650)
+	_setup_panel.add_theme_stylebox_override("panel", _panel_style(Color("211923"), Color("d0a653"), 22, 3))
+	center.add_child(_setup_panel)
 	var margin := _panel_margin(30)
-	panel.add_child(margin)
+	_setup_panel.add_child(margin)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 16)
 	margin.add_child(column)
@@ -309,10 +461,12 @@ func _build_setup_overlay() -> Control:
 	back.custom_minimum_size = Vector2(150, 52)
 	back.pressed.connect(back_to_launcher)
 	buttons.add_child(back)
+	_modal_buttons.append(back)
 	var start := _make_button("START GAME", true)
 	start.custom_minimum_size = Vector2(220, 52)
 	start.pressed.connect(_start_game)
 	buttons.add_child(start)
+	_modal_buttons.append(start)
 	return overlay
 
 
@@ -320,30 +474,31 @@ func _build_rules_overlay() -> Control:
 	var overlay := _modal_base("RulesOverlay")
 	overlay.visible = false
 	var center: CenterContainer = overlay.get_node("Center")
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(860, 720)
-	panel.add_theme_stylebox_override("panel", _panel_style(Color("201923"), Color("c69c4b"), 22, 3))
-	center.add_child(panel)
+	_rules_panel = PanelContainer.new()
+	_rules_panel.custom_minimum_size = Vector2(860, 720)
+	_rules_panel.add_theme_stylebox_override("panel", _panel_style(Color("201923"), Color("c69c4b"), 22, 3))
+	center.add_child(_rules_panel)
 	var margin := _panel_margin(28)
-	panel.add_child(margin)
+	_rules_panel.add_child(margin)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 14)
 	margin.add_child(column)
 	var title := _make_label("HOW TO PLAY 10,000", 28, Color("f1cb67"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
-	var text := RichTextLabel.new()
-	text.bbcode_enabled = true
-	text.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	text.add_theme_font_size_override("normal_font_size", 17)
-	text.add_theme_font_size_override("bold_font_size", 18)
-	text.add_theme_color_override("default_color", Color("ddd1bb"))
-	text.text = _rules_text()
-	column.add_child(text)
+	_rules_text_label = RichTextLabel.new()
+	_rules_text_label.bbcode_enabled = true
+	_rules_text_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_rules_text_label.add_theme_font_size_override("normal_font_size", 17)
+	_rules_text_label.add_theme_font_size_override("bold_font_size", 18)
+	_rules_text_label.add_theme_color_override("default_color", Color("ddd1bb"))
+	_rules_text_label.text = _rules_text()
+	column.add_child(_rules_text_label)
 	var close := _make_button("BACK TO THE TABLE", true)
 	close.custom_minimum_size.y = 52
 	close.pressed.connect(_close_rules)
 	column.add_child(close)
+	_modal_buttons.append(close)
 	return overlay
 
 
@@ -351,12 +506,12 @@ func _build_winner_overlay() -> Control:
 	var overlay := _modal_base("WinnerOverlay")
 	overlay.visible = false
 	var center: CenterContainer = overlay.get_node("Center")
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(580, 360)
-	panel.add_theme_stylebox_override("panel", _panel_style(Color("241a21"), Color("f2c85d"), 24, 4))
-	center.add_child(panel)
+	_winner_panel = PanelContainer.new()
+	_winner_panel.custom_minimum_size = Vector2(580, 360)
+	_winner_panel.add_theme_stylebox_override("panel", _panel_style(Color("241a21"), Color("f2c85d"), 24, 4))
+	center.add_child(_winner_panel)
 	var margin := _panel_margin(34)
-	panel.add_child(margin)
+	_winner_panel.add_child(margin)
 	var column := VBoxContainer.new()
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
 	column.add_theme_constant_override("separation", 22)
@@ -370,10 +525,12 @@ func _build_winner_overlay() -> Control:
 	again.custom_minimum_size.y = 54
 	again.pressed.connect(_show_setup)
 	column.add_child(again)
+	_modal_buttons.append(again)
 	var pub := _make_button("BACK TO GAMER PUB", false)
 	pub.custom_minimum_size.y = 50
 	pub.pressed.connect(back_to_launcher)
 	column.add_child(pub)
+	_modal_buttons.append(pub)
 	return overlay
 
 
@@ -633,7 +790,7 @@ func _show_hand_dice(preselected: PackedInt32Array = PackedInt32Array()) -> void
 		var die := Button.new()
 		die.toggle_mode = not locked
 		die.disabled = locked
-		die.custom_minimum_size = Vector2(112, 112)
+		die.custom_minimum_size = Vector2(170, 170) if _portrait_layout else Vector2(112, 112)
 		die.icon = DIE_TEXTURES[current_roll[index] - 1]
 		die.expand_icon = true
 		die.tooltip_text = "Die showing %d%s" % [current_roll[index], " — locked" if locked else " — click to select"]
@@ -710,6 +867,8 @@ func _update_scoreboard() -> void:
 	for index in range(players.size()):
 		var player: Dictionary = players[index]
 		var row := PanelContainer.new()
+		row.custom_minimum_size.y = 74 if _portrait_layout else 0
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var active := index == current_player and not game_over
 		row.add_theme_stylebox_override("panel", _panel_style(
 			Color("3a2c25") if active else Color("262129"),
@@ -720,16 +879,16 @@ func _update_scoreboard() -> void:
 		var box := HBoxContainer.new()
 		box.add_theme_constant_override("separation", 8)
 		row.add_child(box)
-		var marker := _make_label("●" if active else "○", 14, Color("f0c45b") if active else Color("756a61"))
+		var marker := _make_label("●" if active else "○", 22 if _portrait_layout else 14, Color("f0c45b") if active else Color("756a61"))
 		box.add_child(marker)
-		var name_label := _make_label(player.name, 16, Color("fff0cd") if active else Color("d3c8b5"))
+		var name_label := _make_label(player.name, 25 if _portrait_layout else 16, Color("fff0cd") if active else Color("d3c8b5"))
 		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		box.add_child(name_label)
 		var score_text := _number(player.score)
 		if not player.on_board:
 			score_text = "—"
-		var score_label := _make_label(score_text, 18, Color("f1ca67") if active else Color("b9aa8d"))
+		var score_label := _make_label(score_text, 27 if _portrait_layout else 18, Color("f1ca67") if active else Color("b9aa8d"))
 		box.add_child(score_label)
 		_score_list.add_child(row)
 

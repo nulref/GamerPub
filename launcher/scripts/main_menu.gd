@@ -12,6 +12,11 @@ const MIN_CARD_WIDTH := 168.0
 const CARD_HEIGHT := 210.0
 const CARD_GAP := 16
 const TRACK_PADDING := 14
+const PORTRAIT_VISIBLE_CARDS := 2
+const PORTRAIT_MIN_CARD_WIDTH := 360.0
+const PORTRAIT_CARD_HEIGHT := 400.0
+const PORTRAIT_CARD_GAP := 24
+const PORTRAIT_TRACK_PADDING := 24
 
 # Replace each remaining placeholder as real games are added. The carousel
 # automatically supports any number of entries while showing at most six.
@@ -44,12 +49,25 @@ const GAMES: Array[Dictionary] = [
 @onready var next_button: Button = %NextButton
 @onready var selection_status: Label = %SelectionStatus
 @onready var range_label: Label = %RangeLabel
+@onready var background: TextureRect = $Background
+@onready var screen_margin: MarginContainer = $ScreenMargin
+@onready var main_layout: VBoxContainer = $ScreenMargin/MainLayout
+@onready var header: VBoxContainer = $ScreenMargin/MainLayout/Header
+@onready var title: Label = $ScreenMargin/MainLayout/Header/Title
+@onready var subtitle: Label = $ScreenMargin/MainLayout/Header/Subtitle
+@onready var flexible_spacer: Control = $ScreenMargin/MainLayout/FlexibleSpacer
+@onready var selection_area: VBoxContainer = $ScreenMargin/MainLayout/SelectionArea
+@onready var carousel_shell: PanelContainer = $ScreenMargin/MainLayout/SelectionArea/CarouselShell
+@onready var carousel_margin: MarginContainer = $ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin
+@onready var carousel_row: HBoxContainer = $ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow
+@onready var cards_margin: MarginContainer = $ScreenMargin/MainLayout/SelectionArea/CarouselShell/CarouselMargin/CarouselRow/CardScroll/CardsMargin
 
 var _first_visible := 0
 var _visible_count := MAX_VISIBLE_CARDS
 var _card_step := 0.0
 var _scroll_tween: Tween
 var _button_group := ButtonGroup.new()
+var _portrait_layout := false
 
 
 func _ready() -> void:
@@ -61,6 +79,7 @@ func _ready() -> void:
 	previous_button.pressed.connect(_move_carousel.bind(-1))
 	next_button.pressed.connect(_move_carousel.bind(1))
 	resized.connect(_queue_layout_update)
+	get_viewport().size_changed.connect(_queue_layout_update)
 	card_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	card_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 
@@ -100,25 +119,85 @@ func _queue_layout_update() -> void:
 func _update_card_layout() -> void:
 	if not is_instance_valid(card_scroll) or card_scroll.size.x <= 0.0:
 		return
+	_apply_responsive_layout()
 
-	var usable_width := maxf(card_scroll.size.x - (TRACK_PADDING * 2), MIN_CARD_WIDTH)
+	var minimum_width := PORTRAIT_MIN_CARD_WIDTH if _portrait_layout else MIN_CARD_WIDTH
+	var card_gap := PORTRAIT_CARD_GAP if _portrait_layout else CARD_GAP
+	var track_padding := PORTRAIT_TRACK_PADDING if _portrait_layout else TRACK_PADDING
+	var max_visible := PORTRAIT_VISIBLE_CARDS if _portrait_layout else MAX_VISIBLE_CARDS
+	var card_height := PORTRAIT_CARD_HEIGHT if _portrait_layout else CARD_HEIGHT
+	var usable_width := maxf(card_scroll.size.x - (track_padding * 2), minimum_width)
 	_visible_count = clampi(
-		int(floor((usable_width + CARD_GAP) / (MIN_CARD_WIDTH + CARD_GAP))),
+		int(floor((usable_width + card_gap) / (minimum_width + card_gap))),
 		1,
-		mini(MAX_VISIBLE_CARDS, GAMES.size())
+		mini(max_visible, GAMES.size())
 	)
 
-	var total_gaps := CARD_GAP * (_visible_count - 1)
+	var total_gaps := card_gap * (_visible_count - 1)
 	var card_width: float = floorf((usable_width - float(total_gaps)) / float(_visible_count))
-	_card_step = card_width + CARD_GAP
+	_card_step = card_width + card_gap
 
 	for child in cards.get_children():
 		if child is GameCard:
-			child.custom_minimum_size = Vector2(card_width, CARD_HEIGHT)
+			child.custom_minimum_size = Vector2(card_width, card_height)
+			child.apply_responsive_layout(_portrait_layout)
 
 	_first_visible = mini(_first_visible, _maximum_first_index())
 	card_scroll.scroll_horizontal = roundi(_first_visible * _card_step)
 	_update_navigation()
+
+
+func _apply_responsive_layout() -> void:
+	_portrait_layout = get_viewport_rect().size.y > get_viewport_rect().size.x
+	background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	if _portrait_layout:
+		_set_margins(screen_margin, 70, 80, 70, 220)
+		main_layout.alignment = BoxContainer.ALIGNMENT_CENTER
+		main_layout.add_theme_constant_override("separation", 0)
+		header.custom_minimum_size.y = 250
+		title.add_theme_font_size_override("font_size", 92)
+		subtitle.add_theme_font_size_override("font_size", 36)
+		flexible_spacer.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		flexible_spacer.custom_minimum_size.y = 120
+		selection_area.custom_minimum_size.y = 560
+		carousel_shell.custom_minimum_size.y = 470
+		card_scroll.custom_minimum_size.y = 450
+		carousel_row.add_theme_constant_override("separation", 24)
+		_set_margins(carousel_margin, 24, 14, 24, 14)
+		_set_margins(cards_margin, 24, 24, 24, 24)
+		cards.add_theme_constant_override("separation", PORTRAIT_CARD_GAP)
+		for button in [previous_button, next_button]:
+			button.custom_minimum_size = Vector2(130, 190)
+			button.add_theme_font_size_override("font_size", 86)
+		selection_status.add_theme_font_size_override("font_size", 28)
+		range_label.add_theme_font_size_override("font_size", 28)
+	else:
+		_set_margins(screen_margin, 54, 34, 54, 34)
+		main_layout.alignment = BoxContainer.ALIGNMENT_BEGIN
+		header.custom_minimum_size.y = 155
+		title.add_theme_font_size_override("font_size", 72)
+		subtitle.add_theme_font_size_override("font_size", 27)
+		flexible_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		flexible_spacer.custom_minimum_size.y = 0
+		selection_area.custom_minimum_size.y = 300
+		carousel_shell.custom_minimum_size.y = 250
+		card_scroll.custom_minimum_size.y = 240
+		carousel_row.add_theme_constant_override("separation", 14)
+		_set_margins(carousel_margin, 18, 4, 18, 4)
+		_set_margins(cards_margin, 14, 14, 14, 14)
+		cards.add_theme_constant_override("separation", CARD_GAP)
+		for button in [previous_button, next_button]:
+			button.custom_minimum_size = Vector2(58, 76)
+			button.add_theme_font_size_override("font_size", 46)
+		selection_status.add_theme_font_size_override("font_size", 17)
+		range_label.add_theme_font_size_override("font_size", 17)
+
+
+func _set_margins(container: MarginContainer, left: int, top: int, right: int, bottom: int) -> void:
+	container.add_theme_constant_override("margin_left", left)
+	container.add_theme_constant_override("margin_top", top)
+	container.add_theme_constant_override("margin_right", right)
+	container.add_theme_constant_override("margin_bottom", bottom)
 
 
 func _move_carousel(direction: int) -> void:

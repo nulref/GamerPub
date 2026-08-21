@@ -166,6 +166,23 @@ func _run() -> void:
 	assert(game._roll_button.text == "REROLL")
 	assert(not game._roll_button.disabled)
 
+	# Portrait layouts stack the scoreboard above the table, hide Table Talk,
+	# enlarge touch targets, and reserve space above mobile host overlays.
+	root.size = Vector2i(900, 1600)
+	await process_frame
+	await process_frame
+	game._apply_responsive_layout()
+	assert(game._portrait_layout)
+	assert(game._body.columns == 1)
+	assert(game._score_list.columns == 2)
+	assert(not game._activity_panel.visible)
+	assert(not game._footer_label.visible)
+	assert(game._screen_margin.get_theme_constant("margin_bottom") == 210)
+	assert(game._roll_button.custom_minimum_size.y == 104)
+	for die in game._dice_row.get_children():
+		assert((die as Button).custom_minimum_size == Vector2(170, 170))
+	root.size = Vector2i(1600, 900)
+
 	assert(game.find_child("BackToLauncherButton", true, false) != null)
 	assert(game.find_child("RulesOverlay", true, false) != null)
 	print("PASS: 10,000 game scene and opening-score flow")
