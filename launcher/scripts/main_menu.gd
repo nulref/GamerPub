@@ -4,7 +4,7 @@ signal game_chosen(game_id: StringName)
 
 const GAME_CARD_SCRIPT := preload("res://launcher/scripts/game_card.gd")
 const GAME_LOGO := preload("res://launcher/assets/art/gp_logo.webp")
-const JOKER_LOGO := preload("res://games/joker/assets/art/joker.png")
+const JOKER_LOGO := preload("res://shared/assets/Cards/card_joker.png")
 const TENK_LOGO := preload("res://shared/assets/Dice/die_red_1.png")
 
 const MAX_VISIBLE_CARDS := 6
@@ -24,7 +24,7 @@ const GAMES: Array[Dictionary] = [
 	},
 	{
 		"id": &"tenk",
-		"name": "10,000",
+		"name": "Tenk",
 		"logo": TENK_LOGO,
 		"scene": "res://games/tenk/scenes/game.tscn",
 	},
