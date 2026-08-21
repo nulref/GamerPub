@@ -564,6 +564,8 @@ func _best_lock_candidate() -> PackedInt32Array:
 			continue
 		var exact := RULES.score_selection(values)
 		var combined_score := RULES.score_persistent_hand(locked_batches, values)
+		if candidate.size() == active.size() and not combined_score.all_scoring:
+			continue
 		var priority := -candidate.size()
 		if exact.valid:
 			priority += 10_000 + exact.score

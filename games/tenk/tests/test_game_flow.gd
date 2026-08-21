@@ -122,6 +122,26 @@ func _run() -> void:
 	game._show_hand_dice(PackedInt32Array([4]))
 	assert(game._current_hand_score() == 1000)
 
+	# A scoring final die still busts when it fails to finish a locked partial
+	# combination, instead of leaving the turn with both actions disabled.
+	game.turn_score = 0
+	game.dice_to_roll = 1
+	game.awaiting_next_player = false
+	game.hot_hand_ready = false
+	game.rescue_mode = false
+	game.current_roll = [1, 2, 6, 3, 5, 1]
+	game.locked_indices = PackedInt32Array([0, 1, 2, 3, 4])
+	game.locked_batches = [[1, 2, 6, 3, 5]]
+	assert(game._best_lock_candidate().is_empty())
+	game.current_roll[5] = 4
+	assert(game._best_lock_candidate() == PackedInt32Array([5]))
+	game.current_roll[5] = 1
+	game._present_hand(false)
+	assert(game.awaiting_next_player)
+	assert(game._keep_button.text == "NEXT PLAYER")
+	assert(not game._keep_button.disabled)
+	assert(game._status_label.text.contains("bust"))
+
 	# The player-directed one-time reroll remains available as a no-score rescue.
 	game.turn_score = 0
 	game.dice_to_roll = 6
