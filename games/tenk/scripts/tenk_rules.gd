@@ -2,8 +2,7 @@ class_name TenkRules
 extends RefCounted
 ## Pure scoring helpers for Gamer Pub's version of 10,000.
 ##
-## A scoring selection must be made from a single roll. The once-per-turn
-## selected reroll combines locked and newly rolled dice into one final hand.
+## Locked and newly rolled dice form one persistent six-die hand.
 
 
 static func score_selection(dice: Array[int]) -> Dictionary:
@@ -80,92 +79,42 @@ static func best_scoring_selection(dice: Array[int]) -> Dictionary:
 	return best
 
 
-static func go_for_target_score(face: int) -> int:
-	return 1000 if face == 1 else face * 100
+static func can_lock_for_reroll(locked_dice: Array[int], selected_dice: Array[int]) -> bool:
+	if selected_dice.is_empty() or locked_dice.size() + selected_dice.size() > 6:
+		return false
 
+	var selected_score := best_scoring_selection(selected_dice)
+	if selected_score.score > 0:
+		return true
 
-static func resolve_selected_reroll(locked_dice: Array[int], rolled_dice: Array[int]) -> Dictionary:
-	var failed := _failed_go_for_result()
-	if locked_dice.is_empty() or rolled_dice.is_empty() or locked_dice.size() + rolled_dice.size() != 6:
-		return failed
+	var combined := locked_dice.duplicate()
+	combined.append_array(selected_dice)
+	if combined.size() == 6 and score_selection(combined).valid:
+		return true
 
-	# Preserve the established pair-only house rule, including its cross-roll
-	# scoring behavior for additional matching 1s and 5s.
-	if locked_dice.size() == 2 and locked_dice[0] == locked_dice[1]:
-		return resolve_go_for(locked_dice[0], rolled_dice)
-
-	var final_dice := locked_dice.duplicate()
-	final_dice.append_array(rolled_dice)
-	var scored := best_scoring_selection(final_dice)
-	if not scored.valid:
-		return failed
-	return {
-		"success": true,
-		"score": scored.score,
-		"scoring_count": scored.scoring_count,
-		"and_rolling": scored.scoring_count == 6,
-		"label": scored.label,
-	}
-
-
-static func resolve_go_for(pair_face: int, rolled_dice: Array[int]) -> Dictionary:
-	var failed := _failed_go_for_result()
-	if pair_face < 1 or pair_face > 6 or rolled_dice.size() != 4:
-		return failed
-
-	# The carried pair plus two fresh pairs makes the special three-pair score.
-	# A fresh triple does not combine with the carried pair as "two triplets";
-	# ordinary combinations must otherwise occur entirely in one roll.
-	var rolled_counts := _counts_for(rolled_dice)
-	var rolled_groups: Array[int] = []
+	var counts := _counts_for(combined)
+	var selected_counts := _counts_for(selected_dice)
+	var distinct_faces := 0
 	for face in range(1, 7):
-		if rolled_counts[face] > 0:
-			rolled_groups.append(rolled_counts[face])
-	rolled_groups.sort()
-	if rolled_groups == [2, 2] or rolled_groups == [4]:
-		return {
-			"success": true,
-			"score": 1000,
-			"scoring_count": 6,
-			"and_rolling": true,
-			"label": "Three pairs — and rolling",
-		}
+		if counts[face] > 0:
+			distinct_faces += 1
+	if distinct_faces >= 5:
+		for face in range(1, 7):
+			if selected_counts[face] > 0 and counts[face] == 1:
+				return true
 
-	var matching_index := rolled_dice.find(pair_face)
-	if matching_index < 0:
-		return failed
+	var pair_faces := 0
+	for face in range(1, 7):
+		if counts[face] >= 2:
+			pair_faces += 1
+		if selected_counts[face] > 0 and counts[face] >= 3 and counts[face] <= 5:
+			return true
+	if pair_faces >= 2:
+		for face in range(1, 7):
+			if selected_counts[face] > 0 and counts[face] >= 2:
+				return true
 
-	var remaining := rolled_dice.duplicate()
-	remaining.remove_at(matching_index)
-	var extra := best_scoring_selection(remaining)
-	var target_score := go_for_target_score(pair_face)
-	var extra_score: int = extra.score
-	var extra_count: int = extra.scoring_count
-	var scoring_count := 3 + extra_count
-	var total_score := target_score + extra_score
-	var target_label := "Three %ds" % pair_face
-	if extra_score > 0:
-		target_label += " + %s" % extra.label
-	if scoring_count == 6:
-		target_label += " — and rolling"
-
-	return {
-		"success": true,
-		"score": total_score,
-		"scoring_count": scoring_count,
-		"and_rolling": scoring_count == 6,
-		"label": target_label,
-	}
-
-
-static func _failed_go_for_result() -> Dictionary:
-	return {
-		"success": false,
-		"score": 0,
-		"scoring_count": 0,
-		"and_rolling": false,
-		"label": "Missed the target",
-	}
+	return false
 
 
 static func _counts_for(dice: Array[int]) -> Array[int]:

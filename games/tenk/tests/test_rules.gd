@@ -6,8 +6,7 @@ func _init() -> void:
 	_test_matching_sets_double()
 	_test_singles_and_mixed_scores()
 	_test_best_selection()
-	_test_go_for_it()
-	_test_player_selected_reroll()
+	_test_reroll_lock_eligibility()
 	print("PASS: 10,000 scoring rules")
 	quit()
 
@@ -50,62 +49,17 @@ func _test_best_selection() -> void:
 	assert(best.scoring_count == 4)
 
 
-func _test_go_for_it() -> void:
-	var result := TenkRules.resolve_go_for(1, [1, 1, 5, 6])
-	assert(result.success)
-	assert(result.score == 1150)
-	assert(not result.and_rolling)
-
-	result = TenkRules.resolve_go_for(4, [4, 5, 5, 1])
-	assert(result.success)
-	assert(result.score == 600)
-	assert(result.and_rolling)
-
-	result = TenkRules.resolve_go_for(4, [4, 1, 2, 6])
-	assert(result.success)
-	assert(result.score == 500)
-	assert(not result.and_rolling)
-
-	result = TenkRules.resolve_go_for(4, [4, 3, 3, 3])
-	assert(result.success)
-	assert(result.score == 700)
-	assert(result.and_rolling)
-
-	result = TenkRules.resolve_go_for(1, [2, 2, 3, 3])
-	assert(result.success)
-	assert(result.score == 1000)
-	assert(result.and_rolling)
-
-	result = TenkRules.resolve_go_for(2, [1, 5, 3, 4])
-	assert(not result.success)
-	assert(result.score == 0)
-
-
-func _test_player_selected_reroll() -> void:
-	var result := TenkRules.resolve_selected_reroll([2, 3, 4, 6, 1], [5])
-	assert(result.success)
-	assert(result.score == 1500)
-	assert(result.scoring_count == 6)
-	assert(result.and_rolling)
-
-	result = TenkRules.resolve_selected_reroll([5, 4, 4, 5, 5], [4])
-	assert(result.success)
-	assert(result.score == 1000)
-	assert(result.and_rolling)
-	result = TenkRules.resolve_selected_reroll([2, 4, 4, 2, 4], [2])
-	assert(result.success)
-	assert(result.score == 1000)
-	assert(result.and_rolling)
-	result = TenkRules.resolve_selected_reroll([2, 4, 4, 2, 4], [4])
-	assert(result.success)
-	assert(result.score == 1000)
-	assert(result.and_rolling)
-
-	# A pair-only selection retains the established additive go-for scoring.
-	result = TenkRules.resolve_selected_reroll([1, 1], [1, 1, 5, 6])
-	assert(result.success)
-	assert(result.score == 1150)
-	assert(not result.and_rolling)
+func _test_reroll_lock_eligibility() -> void:
+	assert(TenkRules.can_lock_for_reroll([], [1]))
+	assert(TenkRules.can_lock_for_reroll([], [1, 2, 3]))
+	assert(TenkRules.can_lock_for_reroll([], [2, 3, 4, 5, 6]))
+	assert(TenkRules.can_lock_for_reroll([], [4, 4, 4]))
+	assert(TenkRules.can_lock_for_reroll([], [4, 4, 4, 4, 4]))
+	assert(TenkRules.can_lock_for_reroll([], [2, 2, 3, 3]))
+	assert(TenkRules.can_lock_for_reroll([4, 4, 4, 4], [5]))
+	assert(TenkRules.can_lock_for_reroll([1, 2, 3, 4, 6], [5]))
+	assert(not TenkRules.can_lock_for_reroll([], [4, 4]))
+	assert(not TenkRules.can_lock_for_reroll([], [2, 3, 4, 6]))
 
 
 func _assert_score(dice: Array[int], expected: int) -> void:

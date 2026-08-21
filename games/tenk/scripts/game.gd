@@ -20,10 +20,11 @@ var current_player := 0
 var turn_score := 0
 var dice_to_roll := 6
 var current_roll: Array[int] = []
+var locked_indices := PackedInt32Array()
 var go_for_used := false
-var pending_go_for_plan: Dictionary = {}
+var rescue_mode := false
+var hot_hand_ready := false
 var awaiting_next_player := false
-var awaiting_go_for_choice := false
 var game_over := false
 
 var _score_list: VBoxContainer
@@ -34,11 +35,7 @@ var _roll_detail_label: Label
 var _dice_row: HBoxContainer
 var _selection_label: Label
 var _roll_button: Button
-var _set_aside_button: Button
 var _keep_button: Button
-var _go_for_panel: PanelContainer
-var _go_for_label: Label
-var _go_for_buttons: HBoxContainer
 var _activity_log: RichTextLabel
 var _setup_overlay: Control
 var _player_count: SpinBox
@@ -60,8 +57,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if event.keycode == KEY_SPACE and not _roll_button.disabled:
 		_on_roll_pressed()
 		get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_ENTER and not _set_aside_button.disabled:
-		_on_set_aside_pressed()
+	elif event.keycode == KEY_ENTER and not _roll_button.disabled:
+		_on_roll_pressed()
 		get_viewport().set_input_as_handled()
 
 
@@ -102,7 +99,7 @@ func _build_interface() -> void:
 	body.add_child(_build_activity_panel())
 
 	var footer := Label.new()
-	footer.text = "SPACE rolls  •  ENTER sets selected dice aside  •  Reach 1,000 in one turn to get on the board"
+	footer.text = "SPACE / ENTER rolls or rerolls  •  Selected dice lock in place  •  Reach 1,000 in one turn to get on the board"
 	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	footer.add_theme_color_override("font_color", Color("b8aa91"))
 	footer.add_theme_font_size_override("font_size", 14)
@@ -220,34 +217,13 @@ func _build_table() -> Control:
 	actions.add_theme_constant_override("separation", 12)
 	column.add_child(actions)
 	_roll_button = _make_button("ROLL 6 DICE", true)
-	_roll_button.custom_minimum_size = Vector2(190, 58)
+	_roll_button.custom_minimum_size = Vector2(220, 58)
 	_roll_button.pressed.connect(_on_roll_pressed)
 	actions.add_child(_roll_button)
-	_set_aside_button = _make_button("SET ASIDE", false)
-	_set_aside_button.custom_minimum_size = Vector2(170, 58)
-	_set_aside_button.pressed.connect(_on_set_aside_pressed)
-	actions.add_child(_set_aside_button)
 	_keep_button = _make_button("KEEP IT", false)
-	_keep_button.custom_minimum_size = Vector2(170, 58)
+	_keep_button.custom_minimum_size = Vector2(220, 58)
 	_keep_button.pressed.connect(_on_keep_pressed)
 	actions.add_child(_keep_button)
-
-	_go_for_panel = PanelContainer.new()
-	_go_for_panel.visible = false
-	_go_for_panel.add_theme_stylebox_override("panel", _panel_style(Color("342018"), Color("d89a50"), 14, 2))
-	var go_margin := _panel_margin(14)
-	_go_for_panel.add_child(go_margin)
-	var go_column := VBoxContainer.new()
-	go_column.add_theme_constant_override("separation", 9)
-	go_margin.add_child(go_column)
-	_go_for_label = _make_label("", 15, Color("ffdca0"))
-	_go_for_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	go_column.add_child(_go_for_label)
-	_go_for_buttons = HBoxContainer.new()
-	_go_for_buttons.alignment = BoxContainer.ALIGNMENT_CENTER
-	_go_for_buttons.add_theme_constant_override("separation", 10)
-	go_column.add_child(_go_for_buttons)
-	column.add_child(_go_for_panel)
 	return panel
 
 
@@ -442,50 +418,31 @@ func _begin_turn() -> void:
 	turn_score = 0
 	dice_to_roll = 6
 	current_roll.clear()
+	locked_indices.clear()
 	go_for_used = false
-	pending_go_for_plan.clear()
+	rescue_mode = false
+	hot_hand_ready = false
 	awaiting_next_player = false
-	awaiting_go_for_choice = false
-	_clear_go_for_options()
 	_clear_dice()
 	var player: Dictionary = players[current_player]
 	_status_label.text = "%s, roll all six dice." % player.name
-	_selection_label.text = "Select at least one scoring die after every roll."
+	_selection_label.text = "Select scoring dice or a qualifying partial combination, then reroll."
 	_roll_detail_label.text = "Six dice are ready."
 	_add_log("[color=#f5e5bb]%s's turn[/color]" % player.name)
 	_update_all_ui()
 
 
 func _on_roll_pressed() -> void:
-	if not pending_go_for_plan.is_empty():
-		_roll_go_for_dice()
+	if awaiting_next_player:
 		return
-	if not current_roll.is_empty() or awaiting_next_player:
+	if current_roll.is_empty() or hot_hand_ready:
+		hot_hand_ready = false
+		locked_indices.clear()
+		current_roll = _random_dice(6)
+		dice_to_roll = 6
+		_present_hand(turn_score == 0 and not go_for_used)
 		return
-
-	current_roll = _random_dice(dice_to_roll)
-	var best := RULES.best_scoring_selection(current_roll)
-	_show_dice(current_roll, true, best.indices)
-	_roll_detail_label.text = "Rolled: %s" % _dice_text(current_roll)
-	_roll_button.disabled = true
-	var can_rescue := _can_offer_rescue_reroll()
-
-	if best.score <= 0:
-		if not can_rescue:
-			_finish_bust("No scoring dice — bust!")
-		else:
-			awaiting_go_for_choice = true
-			_status_label.text = "No score yet. Lock any dice you want and reroll the rest, or end the turn."
-			_selection_label.text = "Select 1–5 dice to lock for the turn's one reroll."
-			_show_rescue_reroll_option()
-			_update_controls()
-		return
-
-	_status_label.text = "Choose scoring dice to set aside, keep, or reroll the unselected dice."
-	_selection_label.text = "Best selection: %d points — %s" % [best.score, best.label]
-	if current_roll.size() > 1:
-		_show_scoring_reroll_option()
-	_update_controls()
+	_reroll_unselected_dice()
 
 
 func _on_die_toggled(_pressed: bool, _index: int) -> void:
@@ -493,43 +450,16 @@ func _on_die_toggled(_pressed: bool, _index: int) -> void:
 
 
 func _update_selection_preview() -> void:
-	var selection := _selected_values()
-	var scored := RULES.score_selection(selection)
-	if selection.is_empty():
-		_selection_label.text = "Select 1–5 dice to lock for the rescue reroll." if awaiting_go_for_choice else "Select scoring dice to set aside, keep, or reroll."
-	elif scored.valid:
-		_selection_label.text = "%d points selected — set aside, keep it, or reroll the unselected dice." % scored.score
-	elif awaiting_go_for_choice and selection.size() < current_roll.size():
-		_selection_label.text = "%d dice locked. Reroll the remaining %d once." % [selection.size(), current_roll.size() - selection.size()]
+	var selected := _selected_values()
+	var held := _locked_values()
+	var eligible := RULES.can_lock_for_reroll(held, selected)
+	var available_score := _current_hand_score()
+	if selected.is_empty():
+		_selection_label.text = "Select dice to lock before rerolling."
+	elif eligible:
+		_selection_label.text = "%d selected • current hand score %s" % [selected.size(), _number(available_score)]
 	else:
-		_selection_label.text = "That selection contains a die that does not score."
-	_update_selected_reroll_button()
-	_update_controls()
-
-
-func _on_set_aside_pressed() -> void:
-	var selected_indices := _selected_indices()
-	var selected_values := _selected_values()
-	var scored := RULES.score_selection(selected_values)
-	if not scored.valid:
-		return
-
-	turn_score += scored.score
-	dice_to_roll = current_roll.size() - selected_indices.size()
-	var description := "%s set aside %s for %d" % [players[current_player].name, _dice_text(selected_values), scored.score]
-	_add_log(description)
-	if dice_to_roll == 0:
-		dice_to_roll = 6
-		_status_label.text = "AND ROLLING! All six dice scored. Roll all six again or keep it."
-		_roll_detail_label.text = "%s • hot dice" % scored.label
-	else:
-		_status_label.text = "%d point%s secured this roll. Roll the remaining dice or keep it." % [scored.score, "" if scored.score == 1 else "s"]
-		_roll_detail_label.text = "%d die%s ready to roll." % [dice_to_roll, "" if dice_to_roll == 1 else "s"]
-	current_roll.clear()
-	awaiting_go_for_choice = false
-	_clear_go_for_options()
-	_clear_dice()
-	_selection_label.text = "Turn total: %d. The next roll must score." % turn_score
+		_selection_label.text = "That selection is not a scoring or qualifying partial combination."
 	_update_all_ui()
 
 
@@ -538,77 +468,108 @@ func _on_keep_pressed() -> void:
 		current_player = (current_player + 1) % players.size()
 		_begin_turn()
 		return
-	if awaiting_go_for_choice:
-		_finish_bust("Passed on the go-for attempt.")
+	var hand_score := _current_hand_score()
+	if rescue_mode and hand_score <= 0:
+		_finish_bust("Passed on the rescue reroll.")
 		return
-	if not current_roll.is_empty():
-		var selected_values := _selected_values()
-		var scored := RULES.score_selection(selected_values)
-		if scored.valid and _can_bank_score(scored.score):
-			turn_score += scored.score
-			_add_log("%s kept %s for %d." % [players[current_player].name, _dice_text(selected_values), scored.score])
-			_clear_go_for_options()
-			_finish_scoring_turn("Kept it")
-		return
-	if _can_bank() and current_roll.is_empty():
+	if hand_score > 0 and _can_bank_score(hand_score):
+		turn_score += hand_score
+		_add_log("%s kept the hand for %d." % [players[current_player].name, hand_score])
+		_finish_scoring_turn("Kept it")
+	elif _can_bank():
 		_finish_scoring_turn("Kept it")
 
 
-func _score_and_reroll_selected() -> void:
-	var selected_count := _selected_indices().size()
-	var scored := RULES.score_selection(_selected_values())
-	if not scored.valid or selected_count <= 0 or selected_count >= current_roll.size():
+func _reroll_unselected_dice() -> void:
+	var selected := _selected_indices()
+	if selected.is_empty() or not RULES.can_lock_for_reroll(_locked_values(), _selected_values()):
 		return
-	_on_set_aside_pressed()
-	_on_roll_pressed()
+	for index in selected:
+		if not locked_indices.has(index):
+			locked_indices.append(index)
+	locked_indices.sort()
 
-
-func _choose_selected_reroll() -> void:
-	var locked_dice := _selected_values()
-	if locked_dice.is_empty() or locked_dice.size() >= current_roll.size():
-		return
-	go_for_used = true
-	pending_go_for_plan = {
-		"locked_dice": locked_dice,
-		"reroll_count": current_roll.size() - locked_dice.size(),
-	}
-	awaiting_go_for_choice = false
-	current_roll.clear()
-	_clear_go_for_options()
-	_show_locked_go_for_dice(locked_dice)
-	var reroll_count := int(pending_go_for_plan.reroll_count)
-	_status_label.text = "Locked %d dice. Roll the remaining %s." % [
-		locked_dice.size(),
-		"die" if reroll_count == 1 else "%d dice" % reroll_count,
-	]
-	_roll_detail_label.text = "Locked %s" % _dice_text(locked_dice)
-	_selection_label.text = "The resulting six-die hand will be scored. This reroll is spent for the turn."
-	_update_controls()
-
-
-func _roll_go_for_dice() -> void:
-	var plan := pending_go_for_plan.duplicate(true)
-	pending_go_for_plan.clear()
-	var reroll_count := int(plan.reroll_count)
-	var locked_dice := _dictionary_int_array(plan, "locked_dice")
-	var rolled := _random_dice(reroll_count)
-	_show_dice(rolled, false)
-	_roll_detail_label.text = "Locked %s • rolled %s" % [_dice_text(locked_dice), _dice_text(rolled)]
-	var result := RULES.resolve_selected_reroll(locked_dice, rolled)
-	if not result.success:
-		_finish_bust("The rerolled hand did not score — bust!")
-		return
-
-	turn_score += result.score
-	_add_log("%s rerolled %d dice and scored %d." % [players[current_player].name, reroll_count, result.score])
-	if result.and_rolling:
+	if locked_indices.size() == 6:
+		var full_score := RULES.score_selection(current_roll)
+		if not full_score.valid:
+			_finish_bust("The completed hand does not score — bust!")
+			return
+		turn_score += full_score.score
 		dice_to_roll = 6
-		current_roll.clear()
-		_status_label.text = "%s — AND ROLLING!" % result.label
-		_selection_label.text = "All six dice scored. Roll all six again or keep it."
+		hot_hand_ready = true
+		rescue_mode = false
+		_show_hand_dice()
+		_status_label.text = "%s — AND ROLLING!" % full_score.label
+		_roll_detail_label.text = "All six dice scored for %s." % _number(full_score.score)
+		_selection_label.text = "Reroll all six dice, or keep it."
+		_add_log("%s completed the hand for %d — and rolling." % [players[current_player].name, full_score.score])
 		_update_all_ui()
+		return
+
+	if rescue_mode:
+		go_for_used = true
+		rescue_mode = false
+
+	var rerolled_indices := _active_indices()
+	var rolled_values: Array[int] = []
+	for index in rerolled_indices:
+		current_roll[index] = randi_range(1, 6)
+		rolled_values.append(current_roll[index])
+	dice_to_roll = rerolled_indices.size()
+	var candidate := _best_lock_candidate()
+	if candidate.is_empty():
+		_show_hand_dice()
+		_roll_detail_label.text = "Rerolled %s" % _dice_text(rolled_values)
+		_finish_bust("The rerolled dice did not score or advance a combination — bust!")
+		return
+	_show_hand_dice(candidate)
+	_status_label.text = "Select scoring dice or a qualifying partial combination, then reroll."
+	_roll_detail_label.text = "Rerolled %s • %d dice remain active" % [_dice_text(rolled_values), rerolled_indices.size()]
+	_update_selection_preview()
+
+
+func _present_hand(opening_roll: bool) -> void:
+	var best := RULES.best_scoring_selection(current_roll)
+	rescue_mode = opening_roll and best.score <= 0
+	var candidate := _best_lock_candidate()
+	if candidate.is_empty():
+		_show_hand_dice()
+		_finish_bust("No scoring dice or qualifying partial combination — bust!")
+		return
+	_show_hand_dice(candidate)
+	_roll_detail_label.text = "Rolled: %s" % _dice_text(current_roll)
+	if rescue_mode:
+		_status_label.text = "No score. Use the turn's one rescue reroll with a qualifying partial combination."
 	else:
-		_finish_scoring_turn("Reroll scored %d" % result.score)
+		_status_label.text = "Select dice to lock, then reroll every unselected die."
+	_update_selection_preview()
+
+
+func _best_lock_candidate() -> PackedInt32Array:
+	var active := _active_indices()
+	var best := PackedInt32Array()
+	var best_priority := -1_000
+	for mask in range(1, 1 << active.size()):
+		var candidate := PackedInt32Array()
+		for offset in range(active.size()):
+			if mask & (1 << offset):
+				candidate.append(active[offset])
+		var values := _values_for_indices(candidate)
+		if not RULES.can_lock_for_reroll(_locked_values(), values):
+			continue
+		var exact := RULES.score_selection(values)
+		var combined := _locked_values()
+		combined.append_array(values)
+		var combined_score := RULES.score_selection(combined)
+		var priority := -candidate.size()
+		if exact.valid:
+			priority += 10_000 + exact.score
+		if combined_score.valid:
+			priority += 100_000 + combined_score.score
+		if priority > best_priority:
+			best_priority = priority
+			best = candidate
+	return best
 
 
 func _finish_scoring_turn(reason: String) -> void:
@@ -630,20 +591,20 @@ func _finish_scoring_turn(reason: String) -> void:
 		turn_score = 0
 
 	current_roll.clear()
+	locked_indices.clear()
+	hot_hand_ready = false
+	rescue_mode = false
 	awaiting_next_player = true
-	awaiting_go_for_choice = false
-	_clear_go_for_options()
 	_selection_label.text = "Pass the dice to the next player."
 	_update_all_ui()
 
 
 func _finish_bust(message: String) -> void:
-	var lost := turn_score
+	var lost := turn_score + _current_hand_score()
 	turn_score = 0
-	pending_go_for_plan.clear()
+	hot_hand_ready = false
+	rescue_mode = false
 	awaiting_next_player = true
-	awaiting_go_for_choice = false
-	_clear_go_for_options()
 	_status_label.text = message
 	_selection_label.text = "The turn's %d point%s are lost. Pass the dice." % [lost, "" if lost == 1 else "s"]
 	_add_log("[color=#e7887c]%s busted and lost %d.[/color]" % [players[current_player].name, lost])
@@ -659,29 +620,27 @@ func _show_winner(player: Dictionary) -> void:
 	_add_log("[color=#f5cf61][b]%s WINS![/b][/color]" % player.name)
 
 
-func _show_dice(values: Array[int], selectable: bool, preselected: PackedInt32Array = PackedInt32Array()) -> void:
+func _show_hand_dice(preselected: PackedInt32Array = PackedInt32Array()) -> void:
 	_clear_dice()
-	for index in range(values.size()):
+	for index in range(current_roll.size()):
+		var locked := locked_indices.has(index)
 		var die := Button.new()
-		die.toggle_mode = selectable
-		die.disabled = not selectable
+		die.toggle_mode = not locked
+		die.disabled = locked
 		die.custom_minimum_size = Vector2(112, 112)
-		die.icon = DIE_TEXTURES[values[index] - 1]
+		die.icon = DIE_TEXTURES[current_roll[index] - 1]
 		die.expand_icon = true
-		die.tooltip_text = "Die showing %d%s" % [values[index], " — click to select" if selectable else ""]
+		die.tooltip_text = "Die showing %d%s" % [current_roll[index], " — locked" if locked else " — click to select"]
 		die.add_theme_stylebox_override("normal", _panel_style(Color("f0e5d0"), Color("7b5b42"), 15, 2))
 		die.add_theme_stylebox_override("hover", _panel_style(Color("fff5df"), Color("f1cc68"), 15, 3))
 		die.add_theme_stylebox_override("pressed", _panel_style(Color("f8dda0"), Color("fff0a0"), 15, 5))
 		die.add_theme_stylebox_override("focus", _panel_style(Color.TRANSPARENT, Color("fff0a0"), 15, 3))
-		die.set_pressed_no_signal(preselected.has(index))
-		die.toggled.connect(_on_die_toggled.bind(index))
+		die.set_pressed_no_signal(locked or preselected.has(index))
+		if locked:
+			die.modulate = Color(1.0, 0.82, 0.45, 0.72)
+		else:
+			die.toggled.connect(_on_die_toggled.bind(index))
 		_dice_row.add_child(die)
-
-
-func _show_locked_go_for_dice(locked_dice: Array[int]) -> void:
-	_show_dice(locked_dice, false)
-	for child in _dice_row.get_children():
-		child.modulate = Color(1.0, 0.86, 0.55, 1.0)
 
 
 func _clear_dice() -> void:
@@ -689,55 +648,11 @@ func _clear_dice() -> void:
 		_dice_row.remove_child(child)
 		child.queue_free()
 
-
-func _show_scoring_reroll_option() -> void:
-	_clear_go_for_options()
-	_go_for_panel.show()
-	_go_for_label.text = "Score the selected dice and reroll every unselected die:"
-	var button := _make_button("SELECT SCORING DICE", false)
-	button.custom_minimum_size = Vector2(210, 42)
-	button.pressed.connect(_score_and_reroll_selected)
-	_go_for_buttons.add_child(button)
-	_update_selected_reroll_button()
-
-
-func _show_rescue_reroll_option() -> void:
-	_clear_go_for_options()
-	_go_for_panel.show()
-	_go_for_label.text = "Opening roll has no score: lock any dice and reroll the rest once:"
-	var button := _make_button("SELECT DICE TO LOCK", false)
-	button.custom_minimum_size = Vector2(210, 42)
-	button.pressed.connect(_choose_selected_reroll)
-	_go_for_buttons.add_child(button)
-	_update_selected_reroll_button()
-
-
-func _update_selected_reroll_button() -> void:
-	if not _go_for_panel.visible or _go_for_buttons.get_child_count() == 0:
-		return
-	var button := _go_for_buttons.get_child(0) as Button
-	var locked_count := _selected_indices().size()
-	var reroll_count := current_roll.size() - locked_count
-	var selection_scores: bool = RULES.score_selection(_selected_values()).valid
-	button.disabled = locked_count == 0 or reroll_count <= 0 or (not awaiting_go_for_choice and not selection_scores)
-	if button.disabled:
-		button.text = "SELECT 1–5 DICE TO LOCK" if awaiting_go_for_choice else "SELECT SCORING DICE"
-	else:
-		button.text = "REROLL %d %s" % [reroll_count, "DIE" if reroll_count == 1 else "DICE"]
-
-
-func _clear_go_for_options() -> void:
-	if not _go_for_buttons:
-		return
-	for child in _go_for_buttons.get_children():
-		_go_for_buttons.remove_child(child)
-		child.queue_free()
-	_go_for_panel.hide()
-
-
 func _selected_indices() -> PackedInt32Array:
 	var indices := PackedInt32Array()
 	for index in range(_dice_row.get_child_count()):
+		if locked_indices.has(index):
+			continue
 		var die := _dice_row.get_child(index) as Button
 		if die and die.button_pressed:
 			indices.append(index)
@@ -745,11 +660,35 @@ func _selected_indices() -> PackedInt32Array:
 
 
 func _selected_values() -> Array[int]:
+	return _values_for_indices(_selected_indices())
+
+
+func _locked_values() -> Array[int]:
+	return _values_for_indices(locked_indices)
+
+
+func _values_for_indices(indices: PackedInt32Array) -> Array[int]:
 	var values: Array[int] = []
-	for index in _selected_indices():
-		if index < current_roll.size():
+	for index in indices:
+		if index >= 0 and index < current_roll.size():
 			values.append(current_roll[index])
 	return values
+
+
+func _active_indices() -> PackedInt32Array:
+	var indices := PackedInt32Array()
+	for index in range(current_roll.size()):
+		if not locked_indices.has(index):
+			indices.append(index)
+	return indices
+
+
+func _current_hand_score() -> int:
+	if hot_hand_ready:
+		return 0
+	var held := _locked_values()
+	held.append_array(_selected_values())
+	return int(RULES.best_scoring_selection(held).score)
 
 
 func _update_all_ui() -> void:
@@ -799,45 +738,47 @@ func _update_turn_summary() -> void:
 	if awaiting_next_player and turn_score > 0:
 		_turn_score_label.text = "BANKED THIS TURN  %s" % _number(turn_score)
 	else:
-		_turn_score_label.text = "TURN SCORE  %s" % _number(turn_score)
+		_turn_score_label.text = "TURN SCORE  %s" % _number(turn_score + _current_hand_score())
 
 
 func _update_controls() -> void:
 	if players.is_empty() or game_over:
 		_roll_button.disabled = true
-		_set_aside_button.disabled = true
 		_keep_button.disabled = true
 		return
 
 	if awaiting_next_player:
 		_roll_button.disabled = true
-		_set_aside_button.disabled = true
 		_keep_button.text = "NEXT PLAYER"
 		_keep_button.disabled = false
 		return
 
-	if awaiting_go_for_choice:
-		_roll_button.disabled = true
-		_set_aside_button.disabled = true
+	if current_roll.is_empty():
+		_roll_button.text = "ROLL 6 DICE"
+		_roll_button.disabled = false
+	elif hot_hand_ready:
+		_roll_button.text = "REROLL ALL 6"
+		_roll_button.disabled = false
+	else:
+		_roll_button.text = "REROLL"
+		var selected := _selected_values()
+		var reroll_eligible := RULES.can_lock_for_reroll(_locked_values(), selected)
+		if _selected_indices().size() == _active_indices().size():
+			var completed_hand := _locked_values()
+			completed_hand.append_array(selected)
+			reroll_eligible = RULES.score_selection(completed_hand).valid
+		_roll_button.disabled = not reroll_eligible
+
+	_keep_button.text = "KEEP IT"
+	var hand_score := _current_hand_score()
+	if rescue_mode and hand_score <= 0:
 		_keep_button.text = "END TURN (0)"
 		_keep_button.disabled = false
-		return
-
-	if not pending_go_for_plan.is_empty():
-		var go_for_dice := int(pending_go_for_plan.reroll_count)
-		_roll_button.text = "ROLL %d %s" % [go_for_dice, "DIE" if go_for_dice == 1 else "DICE"]
+	elif hand_score > 0:
+		_keep_button.disabled = not _can_bank_score(hand_score)
 	else:
-		_roll_button.text = "ROLL %d %s" % [dice_to_roll, "DIE" if dice_to_roll == 1 else "DICE"]
-	_roll_button.disabled = not current_roll.is_empty()
-	var selection := _selected_values()
-	var selected_score := RULES.score_selection(selection)
-	_set_aside_button.disabled = current_roll.is_empty() or not selected_score.valid
-	_keep_button.text = "KEEP IT"
-	if current_roll.is_empty():
 		_keep_button.disabled = not _can_bank()
-	else:
-		_keep_button.disabled = not selected_score.valid or not _can_bank_score(selected_score.score)
-	if not _can_bank():
+	if not players[current_player].on_board and turn_score + hand_score < OPENING_SCORE:
 		_keep_button.tooltip_text = "Score at least 1,000 this turn to get on the board." if not players[current_player].on_board else "Select scoring dice to keep."
 	else:
 		_keep_button.tooltip_text = "Bank this turn's points and end the turn."
@@ -853,16 +794,6 @@ func _can_bank_score(additional_score: int) -> bool:
 	if players.is_empty() or additional_score <= 0:
 		return false
 	return players[current_player].on_board or turn_score + additional_score >= OPENING_SCORE
-
-
-func _can_offer_rescue_reroll() -> bool:
-	return (
-		current_roll.size() == 6
-		and dice_to_roll == 6
-		and turn_score == 0
-		and not go_for_used
-		and not awaiting_next_player
-	)
 
 
 func _on_player_count_changed(value: float) -> void:
@@ -894,13 +825,6 @@ func _dice_text(dice: Array[int]) -> String:
 	for die in dice:
 		values.append(str(die))
 	return "[" + ", ".join(values) + "]"
-
-
-func _dictionary_int_array(source: Dictionary, key: String) -> Array[int]:
-	var values: Array[int] = []
-	for value in source.get(key, []):
-		values.append(int(value))
-	return values
 
 
 func _number(value: int) -> String:
@@ -972,7 +896,9 @@ func _panel_margin(amount: int) -> MarginContainer:
 
 func _rules_text() -> String:
 	return """[b][color=#f2ca66]THE TURN[/color][/b]
-Roll six dice. After every scoring roll, select at least one scoring die or combination and set it aside. Reroll every unselected die, or bank the selected score with KEEP IT. Keep scoring and rerolling the remaining dice for as long as each roll scores. A roll with no score is a bust and loses every point from that turn.
+Roll six dice. Select dice to lock, then press REROLL. Locked dice remain disabled in their original positions while every unselected die rerolls in place. Continue until all six dice score or a reroll cannot score or advance a qualifying combination. KEEP IT banks the current scoring hand and ends the turn.
+
+REROLL is enabled when the selected dice contain at least one score, five faces toward a straight, three to five matching dice, two pairs toward the three-pair special, or one triple toward two triplets.
 
 [b][color=#f2ca66]GETTING ON THE BOARD[/color][/b]
 Your first banked turn must be worth at least 1,000 points. After that, you may bank any positive turn score. The first player to reach 10,000 wins immediately.
@@ -988,9 +914,6 @@ Your first banked turn must be worth at least 1,000 points. After that, you may 
 [b][color=#f2ca66]AND ROLLING / HOT DICE[/color][/b]
 When all six dice score, pick up all six and roll again if you continue. Every new roll must score or the entire turn is lost.
 
-[b][color=#f2ca66]GO FOR IT — ONCE PER TURN[/color][/b]
-Only when the opening six-die roll has no scoring dice, select any 1–5 dice to lock and reroll every unselected die once. The locked and rerolled dice are combined into a six-die hand and scored. This lets you rescue the turn by chasing a straight, matching set, or another scoring result.
-
-The reroll is spent for the rest of the turn. A hand with no score busts. A scoring hand ends the turn automatically unless all six dice score.
-
-[color=#a99b84]House-rule note: if every die scores during a go-for attempt, it is treated as “and rolling,” matching the general all-six-dice rule.[/color]"""
+[b][color=#f2ca66]NO-SCORE RESCUE — ONCE PER TURN[/color][/b]
+Only when the opening six-die roll has no scoring dice, a qualifying partial combination may be locked for one rescue reroll. If the rescue does not produce a score or advance the combination, the turn busts.
+"""
