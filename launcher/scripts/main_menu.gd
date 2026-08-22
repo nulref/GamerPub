@@ -29,7 +29,7 @@ const GAMES: Array[Dictionary] = [
 	},
 	{
 		"id": &"tenk",
-		"name": "Tenk",
+		"name": "TenK",
 		"logo": TENK_LOGO,
 		"scene": "res://games/tenk/scenes/game.tscn",
 	},

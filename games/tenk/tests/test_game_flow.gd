@@ -24,6 +24,8 @@ func _run() -> void:
 	assert(game.players.size() == 2)
 	assert(game.players[0].name == "Ada")
 	assert(game._roll_button.get_parent().get_child_count() == 2)
+	assert(game._activity_log.get_parsed_text().contains("event=GAME_START"))
+	assert(game._activity_log.get_parsed_text().contains("event=TURN_START"))
 
 	game.turn_score = 950
 	assert(not game._can_bank())
@@ -31,19 +33,24 @@ func _run() -> void:
 	game.current_roll = [1, 2, 3, 4, 5, 6]
 	game.locked_indices.clear()
 	game.locked_batches.clear()
-	game._show_hand_dice(PackedInt32Array([0, 1, 2, 3, 4, 5]))
+	game._present_hand(false)
 	game._reroll_unselected_dice()
 	assert(game.turn_score == 1500)
 	assert(game.dice_to_roll == 6)
 	assert(game.hot_hand_ready)
 	assert(game._roll_button.text == "REROLL ALL 6")
 	assert(game._can_bank())
+	assert(game._activity_log.get_parsed_text().contains("event=ROLL | dice=[1, 2, 3, 4, 5, 6]"))
+	assert(game._activity_log.get_parsed_text().contains("event=ACTION | action=REROLL"))
+	assert(game._activity_log.get_parsed_text().contains("points=1500"))
 	game._on_keep_pressed()
 	assert(game.players[0].score == 1500)
 	assert(game.players[0].on_board)
 	assert(game.awaiting_next_player)
 	assert(game.turn_score == 1500)
 	assert(game._turn_score_label.text == "BANKED THIS TURN  1,500")
+	assert(game._activity_log.get_parsed_text().contains("action=KEEP | selected=[] | points=0 | hand_points=0 | turn_points=1500"))
+	assert(game._activity_log.get_parsed_text().contains("outcome=BANKED | points=1500"))
 
 	game._on_keep_pressed()
 	assert(game.current_player == 1)
@@ -150,6 +157,31 @@ func _run() -> void:
 	assert(game._keep_button.text == "NEXT PLAYER")
 	assert(not game._keep_button.disabled)
 	assert(game._status_label.text.contains("bust"))
+	assert(game._activity_log.get_parsed_text().contains("outcome=BUST | points=0"))
+
+	# At 9,000 or below, locking two 1s commits the player to completing
+	# three 1s on the immediately following roll. Above 9,000 they remain
+	# ordinary 100-point singles because a 1,000-point result would overshoot.
+	game.players[1].score = 9000
+	assert(game._is_forced_thousand_try([1, 1]))
+	game.players[1].score = 9050
+	assert(not game._is_forced_thousand_try([1, 1]))
+
+	# An opening 1,000 is an immediate bust for a player already over 9,000.
+	game.players[1].score = 9050
+	game.turn_score = 0
+	game.awaiting_next_player = false
+	game.current_roll = [1, 1, 1, 2, 3, 4]
+	game.locked_indices.clear()
+	game.locked_batches.clear()
+	game._present_hand(true)
+	assert(game.awaiting_next_player)
+	assert(game.players[1].score == 9050)
+	assert(game._status_label.text.contains("opening roll scored 1,000"))
+	game.players[1].score = 9000
+	game.awaiting_next_player = false
+	game._present_hand(true)
+	assert(not game.awaiting_next_player)
 
 	# The player-directed one-time reroll remains available as a no-score rescue.
 	game.turn_score = 0
@@ -236,6 +268,31 @@ func _run() -> void:
 	assert(not game._portrait_layout)
 	assert(game._roll_button.custom_minimum_size.y == 58)
 	assert(game._roll_button.get_theme_font_size("font_size") == 16)
+
+	# Winning requires exactly 10,000. Overshooting busts the entire turn and
+	# leaves the player's banked score where it was at the start of the turn.
+	game.current_player = 0
+	game.players[0].score = 9500
+	game.players[0].on_board = true
+	game.game_over = false
+	game.awaiting_next_player = false
+	game.turn_score = 550
+	game.current_roll.clear()
+	game.locked_indices.clear()
+	game.locked_batches.clear()
+	game._finish_scoring_turn("Kept it")
+	assert(game.players[0].score == 9500)
+	assert(game.turn_score == 0)
+	assert(game.awaiting_next_player)
+	assert(not game.game_over)
+	assert(game._status_label.text.contains("over exactly 10,000"))
+	assert(game._activity_log.get_parsed_text().contains("outcome=BUST | points=0 | points_lost=550"))
+
+	game.awaiting_next_player = false
+	game.turn_score = 500
+	game._finish_scoring_turn("Kept it")
+	assert(game.players[0].score == 10_000)
+	assert(game.game_over)
 
 	assert(game.find_child("BackToLauncherButton", true, false) != null)
 	assert(game.find_child("RulesOverlay", true, false) != null)

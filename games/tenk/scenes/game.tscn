@@ -1,8 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://t3v0a5g37fvt"]
 
-[ext_resource type="Script" path="res://games/tenk/scripts/game.gd" id="1_game"]
+[ext_resource type="Script" uid="uid://cqqij7v8w2f2t" path="res://games/tenk/scripts/game.gd" id="1_game"]
 
-[node name="TenkGame" type="Control"]
+[node name="TenkGame" type="Control" unique_id=1394404190]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

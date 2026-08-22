@@ -93,6 +93,7 @@ static func can_lock_for_reroll(locked_dice: Array[int], selected_dice: Array[in
 		return true
 
 	var counts := _counts_for(combined)
+	var locked_counts := _counts_for(locked_dice)
 	var selected_counts := _counts_for(selected_dice)
 	var distinct_faces := 0
 	for face in range(1, 7):
@@ -107,7 +108,7 @@ static func can_lock_for_reroll(locked_dice: Array[int], selected_dice: Array[in
 	for face in range(1, 7):
 		if counts[face] >= 2:
 			pair_faces += 1
-		if selected_counts[face] > 0 and counts[face] >= 3 and counts[face] <= 5:
+		if locked_counts[face] == 2 and selected_counts[face] > 0:
 			return true
 	if pair_faces >= 2:
 		for face in range(1, 7):
@@ -135,7 +136,7 @@ static func score_persistent_hand(locked_batches: Array, selected_batch: Array[i
 		var full_counts := _counts_for(all_dice)
 		if _is_straight(full_counts):
 			return _persistent_result(1500, 6, "Straight — and rolling")
-		if _is_three_pairs(full_counts):
+		if _is_persistent_three_pairs(batch_counts, full_counts):
 			return _persistent_result(1000, 6, "Three pairs — and rolling")
 
 	var total_score := 0
@@ -223,6 +224,32 @@ static func _is_three_pairs(counts: Array[int]) -> bool:
 			groups.append(counts[face])
 	groups.sort()
 	return groups == [2, 2, 2] or groups == [2, 4] or groups == [3, 3]
+
+
+static func _is_persistent_three_pairs(batch_counts: Array, full_counts: Array[int]) -> bool:
+	if not _is_three_pairs(full_counts):
+		return false
+	for face in range(1, 7):
+		var required_count: int = full_counts[face]
+		if required_count == 0:
+			continue
+		var group_was_rolled_together := false
+		for batch_index in range(batch_counts.size()):
+			var batch_count := int(batch_counts[batch_index][face])
+			if batch_count == required_count:
+				group_was_rolled_together = true
+				break
+			if (
+				required_count == 3
+				and batch_count == 2
+				and batch_index + 1 < batch_counts.size()
+				and int(batch_counts[batch_index + 1][face]) == 1
+			):
+				group_was_rolled_together = true
+				break
+		if not group_was_rolled_together:
+			return false
+	return true
 
 
 static func _valid_result(score: int, count: int, label: String) -> Dictionary:

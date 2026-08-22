@@ -59,6 +59,8 @@ func _test_reroll_lock_eligibility() -> void:
 	assert(TenkRules.can_lock_for_reroll([], [2, 2, 3, 3]))
 	assert(TenkRules.can_lock_for_reroll([4, 4, 4, 4], [5]))
 	assert(TenkRules.can_lock_for_reroll([1, 2, 3, 4, 6], [5]))
+	assert(TenkRules.can_lock_for_reroll([6, 6], [6]))
+	assert(not TenkRules.can_lock_for_reroll([6, 6, 6], [6]))
 	assert(not TenkRules.can_lock_for_reroll([], [4, 4]))
 	assert(not TenkRules.can_lock_for_reroll([], [2, 3, 4, 6]))
 
@@ -86,6 +88,15 @@ func _test_persistent_hand_scoring() -> void:
 	assert(result.all_scoring)
 	result = TenkRules.score_persistent_hand([[4, 4, 4, 4], [5], [1]])
 	assert(result.score == 950)
+	assert(result.all_scoring)
+	result = TenkRules.score_persistent_hand([[1], [1], [1]], [1, 5, 5])
+	assert(result.score == 500)
+	assert(result.all_scoring)
+	result = TenkRules.score_persistent_hand([[2, 2, 3, 3]], [4, 4])
+	assert(result.score == 1000)
+	assert(result.all_scoring)
+	result = TenkRules.score_persistent_hand([[2, 2], [2]], [6, 6, 6])
+	assert(result.score == 1000)
 	assert(result.all_scoring)
 
 

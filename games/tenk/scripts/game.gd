@@ -5,6 +5,7 @@ extends Control
 const LAUNCHER_SCENE := "res://launcher/main_menu.tscn"
 const WINNING_SCORE := 10_000
 const OPENING_SCORE := 1_000
+const DEBUG_LOG_PATH := "user://tenk_debug.log"
 const RULES := preload("res://games/tenk/scripts/tenk_rules.gd")
 const DIE_TEXTURES: Array[Texture2D] = [
 	preload("res://shared/assets/Dice/die_red_1.png"),
@@ -27,6 +28,7 @@ var rescue_mode := false
 var hot_hand_ready := false
 var awaiting_next_player := false
 var game_over := false
+var _roll_number := 0
 
 var _score_list: GridContainer
 var _turn_badge: Label
@@ -316,7 +318,7 @@ func _build_header() -> Control:
 	title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	_header_row.add_child(title_box)
-	_title_label = _make_label("10,000", 34, Color("f6d37a"))
+	_title_label = _make_label("TenK", 34, Color("f6d37a"))
 	title_box.add_child(_title_label)
 	_subtitle_label = _make_label("ROLL BOLDLY. BANK WISELY.", 12, Color("ad9a7a"))
 	title_box.add_child(_subtitle_label)
@@ -423,11 +425,13 @@ func _build_activity_panel() -> Control:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 13)
 	margin.add_child(column)
-	var heading := _make_label("TABLE TALK", 20, Color("eac46c"))
+	var heading := _make_label("GAME LOG", 20, Color("eac46c"))
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(heading)
 	_activity_log = RichTextLabel.new()
 	_activity_log.bbcode_enabled = true
+	_activity_log.selection_enabled = true
+	_activity_log.tooltip_text = "Roll and action details are selectable. Native games also append to %s." % DEBUG_LOG_PATH
 	_activity_log.fit_content = false
 	_activity_log.scroll_active = true
 	_activity_log.scroll_following = true
@@ -617,9 +621,14 @@ func _start_game() -> void:
 		players.append({"name": player_name, "score": 0, "on_board": false})
 	current_player = 0
 	game_over = false
+	_roll_number = 0
 	_activity_log.clear()
 	_setup_overlay.hide()
 	_add_log("[color=#f2c85d]New game:[/color] first to 10,000 wins.")
+	_debug_event("GAME_START", [
+		"players=%s" % _player_names_text(),
+		"log_file=%s" % ProjectSettings.globalize_path(DEBUG_LOG_PATH),
+	])
 	_begin_turn()
 
 
@@ -639,6 +648,7 @@ func _begin_turn() -> void:
 	_selection_label.text = "Select scoring dice or a qualifying partial combination, then reroll."
 	_roll_detail_label.text = "Six dice are ready."
 	_add_log("[color=#f5e5bb]%s's turn[/color]" % player.name)
+	_debug_event("TURN_START", ["turn_points=0", "total_score=%d" % int(player.score)])
 	_update_all_ui()
 
 
@@ -654,6 +664,9 @@ func _on_roll_pressed() -> void:
 			})
 		return
 	if current_roll.is_empty() or hot_hand_ready:
+		var roll_action := "ROLL_HOT_DICE" if hot_hand_ready else "ROLL"
+		var no_selected_dice: Array[int] = []
+		_debug_action(roll_action, no_selected_dice, 0, 0, turn_score)
 		hot_hand_ready = false
 		locked_indices.clear()
 		locked_batches.clear()
@@ -692,18 +705,30 @@ func _on_keep_pressed() -> void:
 			})
 		return
 	if awaiting_next_player:
+		var no_selected_dice: Array[int] = []
+		_debug_action("NEXT_PLAYER", no_selected_dice, 0, 0, 0)
 		current_player = (current_player + 1) % players.size()
 		_begin_turn()
 		return
 	var hand_score := _current_hand_score()
+	var previous_hand_score := int(RULES.score_persistent_hand(locked_batches).score)
 	if rescue_mode and hand_score <= 0:
+		_debug_action("KEEP", _selected_values(), 0, hand_score, turn_score)
 		_finish_bust("Passed on the rescue reroll.")
 		return
 	if hand_score > 0 and _can_bank_score(hand_score):
+		_debug_action(
+			"KEEP",
+			_selected_values(),
+			maxi(0, hand_score - previous_hand_score),
+			hand_score,
+			turn_score + hand_score
+		)
 		turn_score += hand_score
 		_add_log("%s kept the hand for %d." % [players[current_player].name, hand_score])
 		_finish_scoring_turn("Kept it")
 	elif _can_bank():
+		_debug_action("KEEP", _selected_values(), 0, hand_score, turn_score)
 		_finish_scoring_turn("Kept it")
 
 
@@ -712,6 +737,16 @@ func _reroll_unselected_dice() -> void:
 	var selected_values := _selected_values()
 	if selected.is_empty() or not RULES.can_lock_for_reroll(_locked_values(), selected_values):
 		return
+	var forced_thousand_try := _is_forced_thousand_try(selected_values)
+	var previous_hand_score := int(RULES.score_persistent_hand(locked_batches).score)
+	var selected_hand_score := int(RULES.score_persistent_hand(locked_batches, selected_values).score)
+	_debug_action(
+		"REROLL",
+		selected_values,
+		maxi(0, selected_hand_score - previous_hand_score),
+		selected_hand_score,
+		turn_score + selected_hand_score
+	)
 	locked_batches.append(selected_values.duplicate())
 	for index in selected:
 		if not locked_indices.has(index):
@@ -745,7 +780,14 @@ func _reroll_unselected_dice() -> void:
 		current_roll[index] = randi_range(1, 6)
 		rolled_values.append(current_roll[index])
 	dice_to_roll = rerolled_indices.size()
-	var candidate := _best_lock_candidate()
+	var missed_thousand_try := forced_thousand_try and not rolled_values.has(1)
+	var candidate := PackedInt32Array() if missed_thousand_try else _best_lock_candidate()
+	_debug_roll(rolled_values, candidate)
+	if missed_thousand_try:
+		_show_hand_dice()
+		_roll_detail_label.text = "Rerolled %s" % _dice_text(rolled_values)
+		_finish_bust("The attempt at three 1s missed the required third 1 — bust!")
+		return
 	if candidate.is_empty():
 		_show_hand_dice()
 		_roll_detail_label.text = "Rerolled %s" % _dice_text(rolled_values)
@@ -761,6 +803,15 @@ func _present_hand(opening_roll: bool) -> void:
 	var best := RULES.best_scoring_selection(current_roll)
 	rescue_mode = opening_roll and best.score <= 0
 	var candidate := _best_lock_candidate()
+	_debug_roll(current_roll, candidate)
+	if opening_roll and int(players[current_player].score) > 9000 and int(best.score) == 1000:
+		_show_hand_dice(candidate)
+		_roll_detail_label.text = "Rolled: %s" % _dice_text(current_roll)
+		_finish_bust(
+			"The opening roll scored 1,000, which would exceed exactly 10,000 — bust!",
+			1000
+		)
+		return
 	if candidate.is_empty():
 		_show_hand_dice()
 		_finish_bust("No scoring dice or qualifying partial combination — bust!")
@@ -801,20 +852,46 @@ func _best_lock_candidate() -> PackedInt32Array:
 	return best
 
 
+func _is_forced_thousand_try(selected_values: Array[int]) -> bool:
+	if players.is_empty() or int(players[current_player].score) > 9000:
+		return false
+	return selected_values.count(1) == 2
+
+
 func _finish_scoring_turn(reason: String) -> void:
 	var player: Dictionary = players[current_player]
 	var earned := turn_score
 	var banked := _can_bank()
 	if banked:
-		player.score += earned
+		var projected_score := int(player.score) + earned
+		if projected_score > WINNING_SCORE:
+			_finish_bust(
+				"%s would reach %s, which is over exactly 10,000 — bust!" % [
+					player.name,
+					_number(projected_score),
+				],
+				earned
+			)
+			return
+		player.score = projected_score
 		player.on_board = true
 		players[current_player] = player
+		_debug_event("OUTCOME", [
+			"outcome=BANKED",
+			"points=%d" % earned,
+			"total_score=%d" % int(player.score),
+		])
 		_status_label.text = "%s — %s banked %d points." % [reason, player.name, earned]
 		_add_log("[color=#8ee0a7]%s banked %d (total %d).[/color]" % [player.name, earned, player.score])
 		if player.score >= WINNING_SCORE:
 			_show_winner(player)
 			return
 	else:
+		_debug_event("OUTCOME", [
+			"outcome=NOT_BANKED",
+			"points=%d" % earned,
+			"banked_points=0",
+		])
 		_status_label.text = "%s, but %s needed 1,000 to get on the board. No points banked." % [reason, player.name]
 		_add_log("[color=#dba078]%s scored %d but did not reach the 1,000-point opening.[/color]" % [player.name, earned])
 		turn_score = 0
@@ -829,8 +906,9 @@ func _finish_scoring_turn(reason: String) -> void:
 	_update_all_ui()
 
 
-func _finish_bust(message: String) -> void:
-	var lost := turn_score + _current_hand_score()
+func _finish_bust(message: String, lost_override: int = -1) -> void:
+	var lost := lost_override if lost_override >= 0 else turn_score + _current_hand_score()
+	_debug_event("OUTCOME", ["outcome=BUST", "points=0", "points_lost=%d" % lost])
 	turn_score = 0
 	hot_hand_ready = false
 	rescue_mode = false
@@ -1181,7 +1259,7 @@ func _on_online_game_state(game_state: Dictionary) -> void:
 	_selection_label.text = String(game_state.get("selection", ""))
 	_activity_log.clear()
 	for entry in game_state.get("activity", []):
-		_activity_log.append_text(String(entry) + "\n\n")
+		_activity_log.append_text(_escape_bbcode(String(entry)) + "\n\n")
 	_setup_overlay.hide()
 	if current_roll.is_empty():
 		_clear_dice()
@@ -1313,6 +1391,85 @@ func _add_log(message: String) -> void:
 	_activity_log.append_text(message + "\n\n")
 
 
+func _debug_roll(rolled_dice: Array[int], suggested: PackedInt32Array) -> void:
+	_roll_number += 1
+	var raw_roll_score := int(RULES.best_scoring_selection(rolled_dice).score)
+	var available_hand_score := 0
+	if not suggested.is_empty():
+		available_hand_score = int(RULES.score_persistent_hand(
+			locked_batches,
+			_values_for_indices(suggested)
+		).score)
+	_debug_event("ROLL", [
+		"dice=%s" % _dice_text(rolled_dice),
+		"locked=%s" % _dice_text(_locked_values()),
+		"roll_points=%d" % raw_roll_score,
+		"available_hand_points=%d" % available_hand_score,
+		"turn_points=%d" % (turn_score + available_hand_score),
+	])
+
+
+func _debug_action(
+	action: String,
+	selected_dice: Array[int],
+	points: int,
+	hand_points: int,
+	turn_points: int
+) -> void:
+	_debug_event("ACTION", [
+		"action=%s" % action,
+		"selected=%s" % _dice_text(selected_dice),
+		"points=%d" % points,
+		"hand_points=%d" % hand_points,
+		"turn_points=%d" % turn_points,
+	])
+
+
+func _debug_event(event_name: String, fields: Array[String]) -> void:
+	var player_name := "none"
+	if not players.is_empty() and current_player >= 0 and current_player < players.size():
+		player_name = _debug_safe_text(String(players[current_player].get("name", "Player")))
+	var parts: Array[String] = [
+		Time.get_datetime_string_from_system(false, true),
+		"roll=%d" % _roll_number,
+		"player=%s" % player_name,
+		"event=%s" % event_name,
+	]
+	parts.append_array(fields)
+	var line := " | ".join(parts)
+	print("[Tenk] %s" % line)
+	if _activity_log:
+		_activity_log.append_text(_escape_bbcode(line) + "\n\n")
+	if OS.has_feature("web"):
+		return
+	var mode := FileAccess.READ_WRITE if FileAccess.file_exists(DEBUG_LOG_PATH) else FileAccess.WRITE
+	var file := FileAccess.open(DEBUG_LOG_PATH, mode)
+	if file == null:
+		push_warning("Could not open the Tenk debug log at %s (error %d)." % [
+			ProjectSettings.globalize_path(DEBUG_LOG_PATH),
+			FileAccess.get_open_error(),
+		])
+		return
+	file.seek_end()
+	file.store_line(line)
+	file.flush()
+
+
+func _player_names_text() -> String:
+	var names: Array[String] = []
+	for player in players:
+		names.append(_debug_safe_text(String(player.get("name", "Player"))))
+	return "[" + ", ".join(names) + "]"
+
+
+func _debug_safe_text(value: String) -> String:
+	return value.replace("\n", " ").replace("\r", " ").replace("|", "/")
+
+
+func _escape_bbcode(value: String) -> String:
+	return value.replace("[", "[lb]")
+
+
 func _make_label(text_value: String, font_size: int, color: Color) -> Label:
 	var label := Label.new()
 	label.text = text_value
@@ -1374,7 +1531,7 @@ Roll six dice. Select dice to lock, then press REROLL. Locked dice remain disabl
 REROLL is enabled when the selected dice contain at least one score, five faces toward a straight, three to five matching dice, two pairs toward the three-pair special, or one triple toward two triplets.
 
 [b][color=#f2ca66]GETTING ON THE BOARD[/color][/b]
-Your first banked turn must be worth at least 1,000 points. After that, you may bank any positive turn score. The first player to reach 10,000 wins immediately.
+Your first banked turn must be worth at least 1,000 points. After that, you may bank any positive turn score. You must land on exactly 10,000 to win; exceeding 10,000 busts the turn and leaves your previously banked score unchanged.
 
 [b][color=#f2ca66]SCORING[/color][/b]
 • Single 1: 100   • Single 5: 50
@@ -1382,6 +1539,8 @@ Your first banked turn must be worth at least 1,000 points. After that, you may 
 • Three of 2–6: face value × 100
 • Every matching die beyond three doubles that set: four 4s = 800, five 4s = 1,600, six 4s = 3,200
 • Matching sets must be rolled together. A locked pair is the exception: one matching die on the immediately following roll completes its triple.
+• A matching die rolled after an already-scored triple does not extend that set or keep the turn alive by itself.
+• At 9,000 or less, locking two 1s commits to rolling the third 1 next; missing it busts the turn. Above 9,000, the two 1s remain ordinary 100-point singles.
 • Straight (1–6): 1,500
 • Three pairs: 1,000. Four-of-a-kind plus a pair and two triplets also count.
 
