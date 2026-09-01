@@ -1,4 +1,4 @@
-const DEFAULT_VOICE_URL = "wss://joker-multiplayer.joker-multiplayer.workers.dev/tenk";
+const DEFAULT_VOICE_URL = "wss://gamerpub-multiplayer.joker-multiplayer.workers.dev/tenk";
 
 export function tenkVoiceSocketUrl(identity, configuredUrl = DEFAULT_VOICE_URL) {
   const url = new URL(configuredUrl);
@@ -41,7 +41,11 @@ export class VoiceRoomClient {
       throw new Error("Voice connection requires a user ID and display name.");
     }
     this.disconnect({ announce: false });
-    this.identity = { userId: identity.userId, name: identity.name.trim() };
+    this.identity = {
+      userId: identity.userId,
+      name: identity.name.trim(),
+      ...(identity.sessionToken ? { sessionToken: identity.sessionToken } : {}),
+    };
     this.manualClose = false;
     this.open();
   }
@@ -75,6 +79,10 @@ export class VoiceRoomClient {
 
   roll() {
     return this.send("roll");
+  }
+
+  setSelection(selectedIndices) {
+    return this.send("set_selection", { selectedIndices });
   }
 
   reroll(selectedIndices) {
@@ -123,7 +131,16 @@ export class VoiceRoomClient {
     this.onStatus("connecting");
 
     socket.addEventListener("open", () => {
-      if (socket === this.socket) this.onStatus("connected");
+      if (socket !== this.socket) return;
+      if (this.identity.sessionToken) {
+        socket.send(JSON.stringify({
+          type: "join",
+          userId: this.identity.userId,
+          name: this.identity.name,
+          sessionToken: this.identity.sessionToken,
+        }));
+      }
+      this.onStatus("connected");
     });
     socket.addEventListener("message", (event) => {
       if (socket !== this.socket) return;

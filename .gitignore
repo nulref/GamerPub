@@ -11,6 +11,11 @@
 *.pck
 *.zip
 
+# Discord Activity dependencies and generated staging files
+/activity/node_modules/
+/activity/public/game/
+/activity/public/game-manifest.json
+
 # Local environment and secret files
 .env
 .env.*

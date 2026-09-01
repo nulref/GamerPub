@@ -1,0 +1,7 @@
+# Required for Discord OAuth and signed Activity sessions. Never commit real values.
+DISCORD_CLIENT_SECRET="YOUR_DISCORD_CLIENT_SECRET"
+ACCESS_SESSION_SECRET="GENERATE_AT_LEAST_32_RANDOM_CHARACTERS"
+
+# Optional: without these values, local voice chat uses Cloudflare STUN only.
+TURN_KEY_ID="YOUR_CLOUDFLARE_TURN_KEY_ID"
+TURN_KEY_API_TOKEN="YOUR_CLOUDFLARE_TURN_KEY_API_TOKEN"

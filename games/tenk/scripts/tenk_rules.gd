@@ -87,6 +87,12 @@ static func can_lock_for_reroll(locked_dice: Array[int], selected_dice: Array[in
 	if selected_score.score > 0:
 		return true
 
+	var selected_counts := _counts_for(selected_dice)
+	if selected_dice.size() == 2:
+		for face in range(1, 7):
+			if selected_counts[face] == 2:
+				return true
+
 	var combined := locked_dice.duplicate()
 	combined.append_array(selected_dice)
 	if combined.size() == 6 and score_selection(combined).valid:
@@ -94,7 +100,6 @@ static func can_lock_for_reroll(locked_dice: Array[int], selected_dice: Array[in
 
 	var counts := _counts_for(combined)
 	var locked_counts := _counts_for(locked_dice)
-	var selected_counts := _counts_for(selected_dice)
 	var distinct_faces := 0
 	for face in range(1, 7):
 		if counts[face] > 0:
@@ -118,7 +123,11 @@ static func can_lock_for_reroll(locked_dice: Array[int], selected_dice: Array[in
 	return false
 
 
-static func score_persistent_hand(locked_batches: Array, selected_batch: Array[int] = []) -> Dictionary:
+static func score_persistent_hand(
+	locked_batches: Array,
+	selected_batch: Array[int] = [],
+	allow_carried_one_triple: bool = true
+) -> Dictionary:
 	var batches: Array = locked_batches.duplicate(true)
 	if not selected_batch.is_empty():
 		batches.append(selected_batch.duplicate())
@@ -150,6 +159,8 @@ static func score_persistent_hand(locked_batches: Array, selected_batch: Array[i
 			best_face_count += batch_result.scoring_count
 
 		for pair_batch in range(batch_counts.size()):
+			if face == 1 and not allow_carried_one_triple:
+				continue
 			if int(batch_counts[pair_batch][face]) != 2:
 				continue
 			var matching_batch := pair_batch + 1

@@ -1,0 +1,24 @@
+{
+  "name": "gamerpub-multiplayer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "smoke": "node scripts/smoke-test.mjs",
+    "smoke:public": "node scripts/public-smoke-test.mjs",
+    "smoke:voice": "node scripts/voice-smoke-test.mjs",
+    "smoke:voice:tenk": "node scripts/tenk-voice-smoke-test.mjs",
+    "smoke:pacing": "node scripts/pacing-smoke-test.mjs",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:dry": "wrangler deploy --dry-run"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260815.1",
+    "typescript": "^5.9.2",
+    "vitest": "^4.1.10",
+    "wrangler": "^4.123.0"
+  }
+}

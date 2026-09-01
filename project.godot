@@ -19,6 +19,8 @@ config/icon="res://launcher/assets/art/gp_logo.webp"
 
 JokerDiscordBridge="*res://games/joker/scripts/discord_bridge.gd"
 TenkWebBridge="*res://games/tenk/scripts/web_bridge.gd"
+CribbageSession="*res://games/cribbage/scripts/session.gd"
+CribbageWebBridge="*res://games/cribbage/scripts/web_bridge.gd"
 
 [display]
 

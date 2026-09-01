@@ -70,11 +70,13 @@ test("routes Tenk lobby, game, and voice messages after the socket connects", ()
     assert.equal(client.joinVoice(), true);
     assert.equal(client.setReady(true), true);
     assert.equal(client.roll(), true);
+    assert.equal(client.setSelection([0, 4]), true);
     assert.equal(client.sendVoiceSignal("peer-id", { kind: "candidate", candidate: null }), true);
     assert.deepEqual(socket.sent, [
       { type: "voice_join" },
       { type: "set_ready", ready: true },
       { type: "roll" },
+      { type: "set_selection", selectedIndices: [0, 4] },
       {
         type: "voice_signal",
         targetPeerId: "peer-id",
@@ -82,6 +84,35 @@ test("routes Tenk lobby, game, and voice messages after the socket connects", ()
       },
     ]);
     client.disconnect();
+  } finally {
+    globalThis.WebSocket = previousWebSocket;
+  }
+});
+
+test("authenticates an Activity Tenk socket immediately after opening", () => {
+  const previousWebSocket = globalThis.WebSocket;
+  globalThis.WebSocket = FakeSocket;
+  try {
+    let socket;
+    const client = new VoiceRoomClient({
+      url: "wss://123.discordsays.com/api/tenk?instance_id=activity-room",
+      socketFactory: (url) => {
+        socket = new FakeSocket(url);
+        return socket;
+      },
+    });
+    client.connect({
+      userId: "123456789012345678",
+      name: "Discord Player",
+      sessionToken: "signed.activity.session",
+    });
+    socket.open();
+    assert.deepEqual(socket.sent, [{
+      type: "join",
+      userId: "123456789012345678",
+      name: "Discord Player",
+      sessionToken: "signed.activity.session",
+    }]);
   } finally {
     globalThis.WebSocket = previousWebSocket;
   }

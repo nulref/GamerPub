@@ -34,6 +34,25 @@ func _run() -> void:
 	game.locked_indices.clear()
 	game.locked_batches.clear()
 	game._present_hand(false)
+	var first_die := game._dice_row.get_child(0) as Button
+	var idle_die_style := first_die.get_theme_stylebox("normal") as StyleBoxFlat
+	var selected_die_style := first_die.get_theme_stylebox("pressed") as StyleBoxFlat
+	assert(idle_die_style.border_width_left == 0)
+	assert(idle_die_style.bg_color == Color.TRANSPARENT)
+	assert(selected_die_style.border_width_left == 6)
+	assert(selected_die_style.border_color == Color.WHITE)
+	assert(game._selected_indices().is_empty())
+	assert(game._roll_button.disabled)
+	assert(game._keep_button.disabled)
+	assert(game._turn_score_label.text == "TURN SCORE  0")
+	game._show_hand_dice(PackedInt32Array([0]))
+	game._update_selection_preview()
+	assert(not game._roll_button.disabled)
+	assert(game._keep_button.disabled)
+	assert(game._turn_score_label.text == "TURN SCORE  100")
+	game._show_hand_dice(PackedInt32Array([0, 1, 2, 3, 4, 5]))
+	game._update_selection_preview()
+	assert(not game._keep_button.disabled)
 	game._reroll_unselected_dice()
 	assert(game.turn_score == 1500)
 	assert(game.dice_to_roll == 6)
@@ -46,15 +65,15 @@ func _run() -> void:
 	game._on_keep_pressed()
 	assert(game.players[0].score == 1500)
 	assert(game.players[0].on_board)
-	assert(game.awaiting_next_player)
-	assert(game.turn_score == 1500)
-	assert(game._turn_score_label.text == "BANKED THIS TURN  1,500")
-	assert(game._activity_log.get_parsed_text().contains("action=KEEP | selected=[] | points=0 | hand_points=0 | turn_points=1500"))
-	assert(game._activity_log.get_parsed_text().contains("outcome=BANKED | points=1500"))
-
-	game._on_keep_pressed()
+	assert(not game.awaiting_next_player)
 	assert(game.current_player == 1)
 	assert(game.turn_score == 0)
+	assert(game._turn_score_label.text == "TURN SCORE  0")
+	assert(game._status_label.text.contains("Ada banked 1500 points"))
+	assert(game._activity_log.get_parsed_text().contains("action=KEEP | selected=[] | points=0 | hand_points=0 | turn_points=1500"))
+	assert(game._activity_log.get_parsed_text().contains("outcome=BANKED | points=1500"))
+	assert(game._activity_log.get_parsed_text().contains("action=AUTO_NEXT_PLAYER"))
+
 	game.players[1].score = 1400
 	game.players[1].on_board = true
 	game.current_player = 1
@@ -69,7 +88,8 @@ func _run() -> void:
 	assert(not game._keep_button.disabled)
 	game._on_keep_pressed()
 	assert(game.players[1].score == 1500)
-	assert(game.awaiting_next_player)
+	assert(not game.awaiting_next_player)
+	assert(game.current_player == 0)
 
 	# Ordinary scoring rerolls can repeat until all six dice have scored.
 	game.turn_score = 0
@@ -153,9 +173,10 @@ func _run() -> void:
 	assert(game._best_lock_candidate() == PackedInt32Array([5]))
 	game.current_roll[5] = 1
 	game._present_hand(false)
-	assert(game.awaiting_next_player)
-	assert(game._keep_button.text == "NEXT PLAYER")
-	assert(not game._keep_button.disabled)
+	assert(not game.awaiting_next_player)
+	assert(game.current_player == 1)
+	assert(game._roll_button.text == "ROLL 6 DICE")
+	assert(not game._roll_button.disabled)
 	assert(game._status_label.text.contains("bust"))
 	assert(game._activity_log.get_parsed_text().contains("outcome=BUST | points=0"))
 
@@ -175,13 +196,65 @@ func _run() -> void:
 	game.locked_indices.clear()
 	game.locked_batches.clear()
 	game._present_hand(true)
-	assert(game.awaiting_next_player)
+	assert(not game.awaiting_next_player)
+	assert(game.current_player == 0)
 	assert(game.players[1].score == 9050)
 	assert(game._status_label.text.contains("opening roll scored 1,000"))
+	game.current_player = 1
 	game.players[1].score = 9000
+	game.awaiting_next_player = false
+	game.current_roll = [1, 1, 1, 2, 3, 4]
+	game.locked_indices.clear()
+	game.locked_batches.clear()
+	game._present_hand(true)
+	assert(not game.awaiting_next_player)
+
+	# A straight that would take the player over exactly 10,000 busts as soon
+	# as it is rolled, then immediately starts the next player's turn.
+	game.current_player = 1
+	game.players[1].score = 9600
+	game.current_roll = [1, 2, 3, 4, 5, 6]
+	game.locked_indices.clear()
+	game.locked_batches.clear()
+	game.turn_score = 0
 	game.awaiting_next_player = false
 	game._present_hand(true)
 	assert(not game.awaiting_next_player)
+	assert(game.current_player == 0)
+	assert(game._status_label.text.contains("opening roll scored 1,500"))
+	assert(game._dice_row.get_child_count() == 0)
+
+	# Above 9,000, a pair of carried 1s and a later 1 remain three singles.
+	game.current_player = 1
+	game.players[1].score = 9600
+	game.awaiting_next_player = false
+	game.current_roll = [1, 1, 1, 6, 4, 2]
+	game.locked_indices = PackedInt32Array([0, 1])
+	game.locked_batches = [[1, 1]]
+	game.go_for_used = false
+	game._show_hand_dice(PackedInt32Array([2]))
+	game._update_controls()
+	assert(game._current_hand_score() == 300)
+	assert(not game._roll_button.disabled)
+
+	# A lone pair can be locked once as a qualifying three-of-a-kind attempt.
+	game.players[1].score = 5450
+	game.current_roll = [1, 5, 4, 6, 6, 5]
+	game.locked_indices.clear()
+	game.locked_batches.clear()
+	game.go_for_used = false
+	game._show_hand_dice(PackedInt32Array([3, 4]))
+	game._update_controls()
+	assert(not game._roll_button.disabled)
+
+	# Two locked 5s plus a newly rolled triple of 5s must leave Reroll enabled.
+	game.current_roll = [5, 5, 5, 4, 5, 5]
+	game.locked_indices = PackedInt32Array([4, 5])
+	game.locked_batches = [[5, 5]]
+	game.go_for_used = false
+	game._show_hand_dice(PackedInt32Array([0, 1, 2]))
+	game._update_controls()
+	assert(not game._roll_button.disabled)
 
 	# The player-directed one-time reroll remains available as a no-score rescue.
 	game.turn_score = 0
@@ -194,9 +267,16 @@ func _run() -> void:
 	game.hot_hand_ready = false
 	game._present_hand(true)
 	assert(game.rescue_mode)
-	assert(game._selected_indices().size() == 4)
+	assert(game._selected_indices().is_empty())
+	assert(game._roll_button.disabled)
+	assert(game._keep_button.disabled)
+	game._show_hand_dice(PackedInt32Array([0, 1]))
+	game._update_selection_preview()
+	assert(game._selected_indices().size() == 2)
+	assert(game._selected_values()[0] == game._selected_values()[1])
 	assert(game._roll_button.text == "REROLL")
 	assert(not game._roll_button.disabled)
+	assert(game._keep_button.disabled)
 
 	# Browser-room snapshots replace local setup and enable only the active
 	# player's device while keeping every table synchronized.
@@ -226,7 +306,7 @@ func _run() -> void:
 		"currentRoll": [],
 		"lockedIndices": [],
 		"lockedBatches": [],
-		"suggestedIndices": [],
+		"selectedIndices": [],
 		"goForUsed": false,
 		"rescueMode": false,
 		"hotHandReady": false,
@@ -244,6 +324,31 @@ func _run() -> void:
 	game._on_online_game_state(online_game)
 	assert(game._roll_button.disabled)
 	assert(game._keep_button.disabled)
+	var sound_count := game._dice_audio.play_count
+	online_game.currentPlayer = 0
+	online_game.currentRoll = [1, 2, 3, 4, 5, 6]
+	online_game.diceToRoll = 6
+	online_game.rollNumber = 1
+	game._on_online_game_state(online_game)
+	assert(game._dice_audio.play_count == sound_count + 1)
+	assert(game._selected_indices().is_empty())
+	assert(game._roll_button.disabled)
+	assert(game._keep_button.disabled)
+	online_game.selectedIndices = [0, 4]
+	online_game.displayTurnScore = 150
+	online_game.selection = "2 selected • current hand score 150"
+	game._on_online_game_state(online_game)
+	assert(game._selected_indices() == PackedInt32Array([0, 4]))
+	assert((game._dice_row.get_child(0) as Button).button_pressed)
+	assert((game._dice_row.get_child(4) as Button).button_pressed)
+	game._web_bridge.set("context", {"currentUser": {"userId": "online-two", "name": "Online Two"}})
+	game._on_online_game_state(online_game)
+	assert((game._dice_row.get_child(0) as Button).disabled)
+	assert((game._dice_row.get_child(0) as Button).button_pressed)
+	assert(game._turn_score_label.text == "TURN SCORE  150")
+	game._web_bridge.set("context", {"currentUser": {"userId": "online-one", "name": "Online One"}})
+	game._on_online_game_state(online_game)
+	assert(game._dice_audio.play_count == sound_count + 1)
 	game._online_mode = false
 
 	# Portrait layouts stack the scoreboard above the table, hide Table Talk,
@@ -283,11 +388,13 @@ func _run() -> void:
 	game._finish_scoring_turn("Kept it")
 	assert(game.players[0].score == 9500)
 	assert(game.turn_score == 0)
-	assert(game.awaiting_next_player)
+	assert(not game.awaiting_next_player)
+	assert(game.current_player == 1)
 	assert(not game.game_over)
 	assert(game._status_label.text.contains("over exactly 10,000"))
 	assert(game._activity_log.get_parsed_text().contains("outcome=BUST | points=0 | points_lost=550"))
 
+	game.current_player = 0
 	game.awaiting_next_player = false
 	game.turn_score = 500
 	game._finish_scoring_turn("Kept it")
@@ -297,6 +404,9 @@ func _run() -> void:
 	assert(game.find_child("BackToLauncherButton", true, false) != null)
 	assert(game.find_child("RulesOverlay", true, false) != null)
 	print("PASS: 10,000 game scene and opening-score flow")
+	game._dice_audio.stop()
+	game._dice_audio.stream = null
+	game._dice_audio._roll_stream = null
 	game.queue_free()
 	current_scene = null
 	await process_frame

@@ -1,0 +1,45 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gamerpub-multiplayer",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-14",
+  "workers_dev": true,
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "DISCORD_CLIENT_ID": "1540543783626870804",
+    "DISCORD_HOST_ACCESS_MODE": "free",
+    "PUBLIC_ACTIVITY_ORIGINS": "https://gamerpub.netlify.app,https://1540543783626870804.discordsays.com"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "GAME_ROOMS",
+        "class_name": "GameRoom"
+      },
+      {
+        "name": "TENK_ROOMS",
+        "class_name": "TenkRoom"
+      },
+      {
+        "name": "CRIBBAGE_ROOMS",
+        "class_name": "CribbageRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["GameRoom"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["TenkRoom"]
+    },
+    {
+      "tag": "v3",
+      "new_sqlite_classes": ["CribbageRoom"]
+    }
+  ]
+}

@@ -15,9 +15,12 @@ const configuredUrl = ["localhost", "127.0.0.1"].includes(window.location.hostna
   ? `ws://${window.location.hostname}:8787/tenk`
   : productionUrl;
 const PLAYER_ID_KEY = "gamer-pub.voice-player-id";
+const awaitingActivityContext =
+  new URLSearchParams(window.location.search).get("gamer_pub_activity") === "discord";
 
 let visible = false;
 let socketConnected = false;
+let activityContextReady = !awaitingActivityContext;
 
 function postToGame(type, payload) {
   window.postMessage({
@@ -54,7 +57,7 @@ function playerIdentity() {
   return { userId, name: `Player ${suffix}` };
 }
 
-const identity = playerIdentity();
+let identity = playerIdentity();
 const microphone = new MicrophoneController();
 const roomClient = new VoiceRoomClient({
   ...(configuredUrl ? { url: configuredUrl } : {}),
@@ -132,10 +135,12 @@ renderVoiceState(voiceChat.state());
 
 function setVisible(nextVisible) {
   visible = Boolean(nextVisible);
-  toolbar.hidden = !visible;
+  // Discord already supplies the voice channel around the Activity. Keep the
+  // Tenk room connection active there, but do not offer a second browser voice
+  // session inside the game.
+  toolbar.hidden = !visible || awaitingActivityContext;
   if (visible) {
-    postToGame("tenk-context", { currentUser: identity });
-    if (!socketConnected && !roomClient.socket) roomClient.connect(identity);
+    connectRoomIfReady();
   } else {
     voiceChat.leave();
     roomClient.disconnect();
@@ -143,11 +148,45 @@ function setVisible(nextVisible) {
   }
 }
 
+function connectRoomIfReady() {
+  if (!visible) return;
+  if (!activityContextReady) {
+    setStatus("Connecting to Discord...");
+    return;
+  }
+  postToGame("tenk-context", { currentUser: identity });
+  if (!socketConnected && !roomClient.socket) roomClient.connect(identity);
+}
+
+function applyActivityContext(payload) {
+  if (!awaitingActivityContext) return;
+  const user = payload?.currentUser;
+  if (!payload?.connected || !user?.userId || !user?.name || !payload?.tenkSocketUrl ||
+      !payload?.sessionToken) {
+    activityContextReady = false;
+    if (visible) setStatus("Connecting to Discord...");
+    return;
+  }
+
+  const identityChanged = identity.userId !== user.userId ||
+    identity.sessionToken !== payload.sessionToken || roomClient.url !== payload.tenkSocketUrl;
+  activityContextReady = true;
+  identity = {
+    userId: user.userId,
+    name: user.name,
+    sessionToken: payload.sessionToken,
+  };
+  roomClient.url = payload.tenkSocketUrl;
+  if (identityChanged && roomClient.socket) roomClient.disconnect({ announce: false });
+  connectRoomIfReady();
+}
+
 const roomCommands = new Set([
   "set_name",
   "set_ready",
   "start_game",
   "roll",
+  "set_selection",
   "reroll",
   "keep",
   "next_player",
@@ -169,8 +208,20 @@ window.addEventListener("beforeunload", () => {
 });
 
 window.addEventListener("message", (event) => {
-  if (event.origin !== window.location.origin || event.data?.source !== "gamer-pub-tenk-godot") return;
-  sendRoomCommand(event.data.command, event.data.payload ?? {});
+  if (event.origin !== window.location.origin) return;
+  if (event.data?.source === "gamer-pub-activity" && event.data.type === "discord-context") {
+    let payload = event.data.payload;
+    if (!payload && typeof event.data.payloadJson === "string") {
+      try {
+        payload = JSON.parse(event.data.payloadJson);
+      } catch {
+        payload = null;
+      }
+    }
+    applyActivityContext(payload);
+  } else if (event.data?.source === "gamer-pub-tenk-godot") {
+    sendRoomCommand(event.data.command, event.data.payload ?? {});
+  }
 });
 
 window.GamerPubVoice = { setVisible, sendRoomCommand };

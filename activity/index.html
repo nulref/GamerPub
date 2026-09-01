@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="theme-color" content="#17111b" />
+    <title>Gamer Pub</title>
+  </head>
+  <body>
+    <main id="activity-shell">
+      <iframe
+        id="game-frame"
+        title="Gamer Pub"
+        allow="autoplay; clipboard-write; fullscreen; gamepad; microphone"
+      ></iframe>
+      <div id="connection-status" role="status" aria-live="polite">Starting Gamer Pub...</div>
+      <nav id="legal-links" aria-label="Legal">
+        <a href="/privacy.html" target="_blank" rel="noopener noreferrer">Privacy</a>
+        <span aria-hidden="true">·</span>
+        <a href="/terms.html" target="_blank" rel="noopener noreferrer">Terms</a>
+      </nav>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

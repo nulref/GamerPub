@@ -6,6 +6,7 @@ const GAME_CARD_SCRIPT := preload("res://launcher/scripts/game_card.gd")
 const GAME_LOGO := preload("res://launcher/assets/art/gp_logo.webp")
 const JOKER_LOGO := preload("res://shared/assets/Cards/card_joker.png")
 const TENK_LOGO := preload("res://shared/assets/Dice/die_red_1.png")
+const CRIBBAGE_LOGO := preload("res://shared/assets/Cards/card_spade_1.png")
 
 const MAX_VISIBLE_CARDS := 6
 const MIN_CARD_WIDTH := 168.0
@@ -34,7 +35,12 @@ const GAMES: Array[Dictionary] = [
 		"scene": "res://games/tenk/scenes/game.tscn",
 	},
 	{"id": &"game_03", "name": "Game 03", "logo": GAME_LOGO},
-	{"id": &"game_04", "name": "Game 04", "logo": GAME_LOGO},
+	{
+		"id": &"cribbage",
+		"name": "Cribbage",
+		"logo": CRIBBAGE_LOGO,
+		"scene": "res://games/cribbage/scenes/main_menu.tscn",
+	},
 	{"id": &"game_05", "name": "Game 05", "logo": GAME_LOGO},
 	{"id": &"game_06", "name": "Game 06", "logo": GAME_LOGO},
 	{"id": &"game_07", "name": "Game 07", "logo": GAME_LOGO},

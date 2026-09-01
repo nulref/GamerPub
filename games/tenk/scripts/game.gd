@@ -81,7 +81,9 @@ var _online_mode := false
 var _online_room: Dictionary = {}
 var _online_game: Dictionary = {}
 var _online_display_turn_score := 0
+var _online_roll_number := -1
 var _web_bridge: Node
+@onready var _dice_audio: TenkDiceAudio = %DiceAudio
 
 
 func _ready() -> void:
@@ -457,7 +459,7 @@ func _build_setup_overlay() -> Control:
 	var title := _make_label("PULL UP A CHAIR", 30, Color("f3cf70"))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(title)
-	_setup_intro = _make_label("Choose 2–8 local players. Pass the dice when each turn ends.", 16, Color("d0c3ad"))
+	_setup_intro = _make_label("Choose 2–8 local players. Turns advance automatically after banking or busting.", 16, Color("d0c3ad"))
 	_setup_intro.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_setup_intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_setup_intro)
@@ -632,7 +634,7 @@ func _start_game() -> void:
 	_begin_turn()
 
 
-func _begin_turn() -> void:
+func _begin_turn(handoff_message: String = "") -> void:
 	turn_score = 0
 	dice_to_roll = 6
 	current_roll.clear()
@@ -644,8 +646,13 @@ func _begin_turn() -> void:
 	awaiting_next_player = false
 	_clear_dice()
 	var player: Dictionary = players[current_player]
-	_status_label.text = "%s, roll all six dice." % player.name
-	_selection_label.text = "Select scoring dice or a qualifying partial combination, then reroll."
+	var next_turn_message := "%s, roll all six dice." % player.name
+	_status_label.text = (
+		"%s %s" % [handoff_message.strip_edges(), next_turn_message]
+		if not handoff_message.strip_edges().is_empty()
+		else next_turn_message
+	)
+	_selection_label.text = "Roll to begin."
 	_roll_detail_label.text = "Six dice are ready."
 	_add_log("[color=#f5e5bb]%s's turn[/color]" % player.name)
 	_debug_event("TURN_START", ["turn_points=0", "total_score=%d" % int(player.score)])
@@ -667,6 +674,7 @@ func _on_roll_pressed() -> void:
 		var roll_action := "ROLL_HOT_DICE" if hot_hand_ready else "ROLL"
 		var no_selected_dice: Array[int] = []
 		_debug_action(roll_action, no_selected_dice, 0, 0, turn_score)
+		_dice_audio.play_roll(6)
 		hot_hand_ready = false
 		locked_indices.clear()
 		locked_batches.clear()
@@ -679,12 +687,15 @@ func _on_roll_pressed() -> void:
 
 func _on_die_toggled(_pressed: bool, _index: int) -> void:
 	_update_selection_preview()
+	if _online_mode and _is_online_local_turn():
+		_web_bridge.call("send_room_command", "set_selection", {
+			"selectedIndices": _selected_indices_array(),
+		})
 
 
 func _update_selection_preview() -> void:
 	var selected := _selected_values()
-	var held := _locked_values()
-	var eligible := RULES.can_lock_for_reroll(held, selected)
+	var eligible := _can_use_selection(selected)
 	var available_score := _current_hand_score()
 	if selected.is_empty():
 		_selection_label.text = "Select dice to lock before rerolling."
@@ -710,12 +721,14 @@ func _on_keep_pressed() -> void:
 		current_player = (current_player + 1) % players.size()
 		_begin_turn()
 		return
+	var selected_values := _selected_values()
+	if not hot_hand_ready:
+		if selected_values.is_empty() or not _can_use_selection(selected_values):
+			return
+		if int(_score_hand(selected_values).score) <= int(_score_hand().score):
+			return
 	var hand_score := _current_hand_score()
-	var previous_hand_score := int(RULES.score_persistent_hand(locked_batches).score)
-	if rescue_mode and hand_score <= 0:
-		_debug_action("KEEP", _selected_values(), 0, hand_score, turn_score)
-		_finish_bust("Passed on the rescue reroll.")
-		return
+	var previous_hand_score := int(_score_hand().score)
 	if hand_score > 0 and _can_bank_score(hand_score):
 		_debug_action(
 			"KEEP",
@@ -735,11 +748,13 @@ func _on_keep_pressed() -> void:
 func _reroll_unselected_dice() -> void:
 	var selected := _selected_indices()
 	var selected_values := _selected_values()
-	if selected.is_empty() or not RULES.can_lock_for_reroll(_locked_values(), selected_values):
+	if selected.is_empty() or not _can_use_selection(selected_values):
 		return
 	var forced_thousand_try := _is_forced_thousand_try(selected_values)
-	var previous_hand_score := int(RULES.score_persistent_hand(locked_batches).score)
-	var selected_hand_score := int(RULES.score_persistent_hand(locked_batches, selected_values).score)
+	var previous_hand_score := int(_score_hand().score)
+	var selected_hand_score := int(_score_hand(selected_values).score)
+	var selected_roll_score := int(RULES.best_scoring_selection(selected_values).score)
+	var consumes_go_for := selected_roll_score <= 0 and selected_hand_score <= previous_hand_score
 	_debug_action(
 		"REROLL",
 		selected_values,
@@ -754,7 +769,7 @@ func _reroll_unselected_dice() -> void:
 	locked_indices.sort()
 
 	if locked_indices.size() == 6:
-		var full_score := RULES.score_persistent_hand(locked_batches)
+		var full_score := _score_hand()
 		if not full_score.valid or not full_score.all_scoring:
 			_finish_bust("The completed hand does not score — bust!")
 			return
@@ -770,12 +785,13 @@ func _reroll_unselected_dice() -> void:
 		_update_all_ui()
 		return
 
-	if rescue_mode:
+	if rescue_mode or consumes_go_for:
 		go_for_used = true
 		rescue_mode = false
 
 	var rerolled_indices := _active_indices()
 	var rolled_values: Array[int] = []
+	_dice_audio.play_roll(rerolled_indices.size())
 	for index in rerolled_indices:
 		current_roll[index] = randi_range(1, 6)
 		rolled_values.append(current_roll[index])
@@ -793,7 +809,7 @@ func _reroll_unselected_dice() -> void:
 		_roll_detail_label.text = "Rerolled %s" % _dice_text(rolled_values)
 		_finish_bust("The rerolled dice did not score or advance a combination — bust!")
 		return
-	_show_hand_dice(candidate)
+	_show_hand_dice()
 	_status_label.text = "Select scoring dice or a qualifying partial combination, then reroll."
 	_roll_detail_label.text = "Rerolled %s • %d dice remain active" % [_dice_text(rolled_values), rerolled_indices.size()]
 	_update_selection_preview()
@@ -804,19 +820,25 @@ func _present_hand(opening_roll: bool) -> void:
 	rescue_mode = opening_roll and best.score <= 0
 	var candidate := _best_lock_candidate()
 	_debug_roll(current_roll, candidate)
-	if opening_roll and int(players[current_player].score) > 9000 and int(best.score) == 1000:
-		_show_hand_dice(candidate)
+	var forced_projected_score := (
+		int(players[current_player].score) + turn_score + int(best.score)
+	)
+	if int(best.score) >= 1000 and forced_projected_score > WINNING_SCORE:
+		_show_hand_dice()
 		_roll_detail_label.text = "Rolled: %s" % _dice_text(current_roll)
 		_finish_bust(
-			"The opening roll scored 1,000, which would exceed exactly 10,000 — bust!",
-			1000
+			"The %sroll scored %s, which would exceed exactly 10,000 — bust!" % [
+				"opening " if opening_roll else "",
+				_number(int(best.score)),
+			],
+			turn_score + int(best.score)
 		)
 		return
 	if candidate.is_empty():
 		_show_hand_dice()
 		_finish_bust("No scoring dice or qualifying partial combination — bust!")
 		return
-	_show_hand_dice(candidate)
+	_show_hand_dice()
 	_roll_detail_label.text = "Rolled: %s" % _dice_text(current_roll)
 	if rescue_mode:
 		_status_label.text = "No score. Use the turn's one rescue reroll with a qualifying partial combination."
@@ -835,10 +857,10 @@ func _best_lock_candidate() -> PackedInt32Array:
 			if mask & (1 << offset):
 				candidate.append(active[offset])
 		var values := _values_for_indices(candidate)
-		if not RULES.can_lock_for_reroll(_locked_values(), values):
+		if not _can_use_selection(values):
 			continue
 		var exact := RULES.score_selection(values)
-		var combined_score := RULES.score_persistent_hand(locked_batches, values)
+		var combined_score := _score_hand(values)
 		if candidate.size() == active.size() and not combined_score.all_scoring:
 			continue
 		var priority := -candidate.size()
@@ -856,6 +878,25 @@ func _is_forced_thousand_try(selected_values: Array[int]) -> bool:
 	if players.is_empty() or int(players[current_player].score) > 9000:
 		return false
 	return selected_values.count(1) == 2
+
+
+func _score_hand(selected_values: Array[int] = []) -> Dictionary:
+	var allow_carried_one_triple := (
+		not players.is_empty() and int(players[current_player].score) <= 9000
+	)
+	return RULES.score_persistent_hand(
+		locked_batches,
+		selected_values,
+		allow_carried_one_triple
+	)
+
+
+func _can_use_selection(selected_values: Array[int]) -> bool:
+	if not RULES.can_lock_for_reroll(_locked_values(), selected_values):
+		return false
+	if not go_for_used or int(RULES.best_scoring_selection(selected_values).score) > 0:
+		return true
+	return int(_score_hand(selected_values).score) > int(_score_hand().score)
 
 
 func _finish_scoring_turn(reason: String) -> void:
@@ -886,6 +927,7 @@ func _finish_scoring_turn(reason: String) -> void:
 		if player.score >= WINNING_SCORE:
 			_show_winner(player)
 			return
+		_advance_to_next_player("%s banked %d points." % [player.name, earned])
 	else:
 		_debug_event("OUTCOME", [
 			"outcome=NOT_BANKED",
@@ -894,29 +936,23 @@ func _finish_scoring_turn(reason: String) -> void:
 		])
 		_status_label.text = "%s, but %s needed 1,000 to get on the board. No points banked." % [reason, player.name]
 		_add_log("[color=#dba078]%s scored %d but did not reach the 1,000-point opening.[/color]" % [player.name, earned])
-		turn_score = 0
-
-	current_roll.clear()
-	locked_indices.clear()
-	locked_batches.clear()
-	hot_hand_ready = false
-	rescue_mode = false
-	awaiting_next_player = true
-	_selection_label.text = "Pass the dice to the next player."
-	_update_all_ui()
+		_advance_to_next_player("%s's %d points were not banked." % [player.name, earned])
 
 
 func _finish_bust(message: String, lost_override: int = -1) -> void:
 	var lost := lost_override if lost_override >= 0 else turn_score + _current_hand_score()
+	var busted_player_name := String(players[current_player].name)
 	_debug_event("OUTCOME", ["outcome=BUST", "points=0", "points_lost=%d" % lost])
-	turn_score = 0
-	hot_hand_ready = false
-	rescue_mode = false
-	awaiting_next_player = true
-	_status_label.text = message
-	_selection_label.text = "The turn's %d point%s are lost. Pass the dice." % [lost, "" if lost == 1 else "s"]
-	_add_log("[color=#e7887c]%s busted and lost %d.[/color]" % [players[current_player].name, lost])
-	_update_all_ui()
+	_add_log("[color=#e7887c]%s[/color]" % message)
+	_add_log("[color=#e7887c]%s busted and lost %d.[/color]" % [busted_player_name, lost])
+	_advance_to_next_player(message)
+
+
+func _advance_to_next_player(handoff_message: String) -> void:
+	var no_selected_dice: Array[int] = []
+	_debug_action("AUTO_NEXT_PLAYER", no_selected_dice, 0, 0, 0)
+	current_player = (current_player + 1) % players.size()
+	_begin_turn(handoff_message)
 
 
 func _show_winner(player: Dictionary) -> void:
@@ -928,11 +964,16 @@ func _show_winner(player: Dictionary) -> void:
 	_add_log("[color=#f5cf61][b]%s WINS![/b][/color]" % player.name)
 
 
-func _show_hand_dice(preselected: PackedInt32Array = PackedInt32Array()) -> void:
+func _show_hand_dice(selected_indices: PackedInt32Array = PackedInt32Array()) -> void:
 	_clear_dice()
 	for index in range(current_roll.size()):
 		var locked := locked_indices.has(index)
-		var interactive := not locked and (not _online_mode or _is_online_local_turn())
+		var interactive := (
+			not locked
+			and not awaiting_next_player
+			and not game_over
+			and (not _online_mode or _is_online_local_turn())
+		)
 		var die := Button.new()
 		die.toggle_mode = not locked
 		die.disabled = not interactive
@@ -943,14 +984,16 @@ func _show_hand_dice(preselected: PackedInt32Array = PackedInt32Array()) -> void
 			current_roll[index],
 			" — locked" if locked else (" — click to select" if interactive else " — waiting for the active player")
 		]
-		die.add_theme_stylebox_override("normal", _panel_style(Color("f0e5d0"), Color("7b5b42"), 15, 2))
-		die.add_theme_stylebox_override("hover", _panel_style(Color("fff5df"), Color("f1cc68"), 15, 3))
-		die.add_theme_stylebox_override("pressed", _panel_style(Color("f8dda0"), Color("fff0a0"), 15, 5))
-		die.add_theme_stylebox_override("focus", _panel_style(Color.TRANSPARENT, Color("fff0a0"), 15, 3))
-		die.set_pressed_no_signal(locked or preselected.has(index))
-		if locked:
-			die.modulate = Color(1.0, 0.82, 0.45, 0.72)
-		elif interactive:
+		var idle_style := _panel_style(Color.TRANSPARENT, Color.TRANSPARENT, 15, 0)
+		var selected_style := _panel_style(Color.TRANSPARENT, Color.WHITE, 15, 6)
+		var highlighted := locked or selected_indices.has(index)
+		die.add_theme_stylebox_override("normal", idle_style)
+		die.add_theme_stylebox_override("hover", idle_style)
+		die.add_theme_stylebox_override("pressed", selected_style)
+		die.add_theme_stylebox_override("focus", idle_style)
+		die.add_theme_stylebox_override("disabled", selected_style if highlighted else idle_style)
+		die.set_pressed_no_signal(highlighted)
+		if interactive:
 			die.toggled.connect(_on_die_toggled.bind(index))
 		_dice_row.add_child(die)
 
@@ -1005,7 +1048,7 @@ func _active_indices() -> PackedInt32Array:
 func _current_hand_score() -> int:
 	if hot_hand_ready:
 		return 0
-	return int(RULES.score_persistent_hand(locked_batches, _selected_values()).score)
+	return int(_score_hand(_selected_values()).score)
 
 
 func _update_all_ui() -> void:
@@ -1099,21 +1142,26 @@ func _update_controls() -> void:
 	else:
 		_roll_button.text = "REROLL"
 		var selected := _selected_values()
-		var reroll_eligible := RULES.can_lock_for_reroll(_locked_values(), selected)
+		var reroll_eligible := not selected.is_empty() and _can_use_selection(selected)
 		if _selected_indices().size() == _active_indices().size():
-			var completed_hand := RULES.score_persistent_hand(locked_batches, selected)
+			var completed_hand := _score_hand(selected)
 			reroll_eligible = completed_hand.valid and completed_hand.all_scoring
 		_roll_button.disabled = not reroll_eligible
 
 	_keep_button.text = "KEEP IT"
 	var hand_score := _current_hand_score()
-	if rescue_mode and hand_score <= 0:
-		_keep_button.text = "END TURN (0)"
-		_keep_button.disabled = false
-	elif hand_score > 0:
+	var selected_values := _selected_values()
+	var selection_adds_score := (
+		not selected_values.is_empty()
+		and _can_use_selection(selected_values)
+		and hand_score > int(_score_hand().score)
+	)
+	if hot_hand_ready:
+		_keep_button.disabled = not _can_bank()
+	elif selection_adds_score:
 		_keep_button.disabled = not _can_bank_score(hand_score)
 	else:
-		_keep_button.disabled = not _can_bank()
+		_keep_button.disabled = true
 	if not players[current_player].on_board and turn_score + hand_score < OPENING_SCORE:
 		_keep_button.tooltip_text = "Score at least 1,000 this turn to get on the board." if not players[current_player].on_board else "Select scoring dice to keep."
 	else:
@@ -1220,6 +1268,9 @@ func _on_online_room_state(room: Dictionary) -> void:
 func _on_online_game_state(game_state: Dictionary) -> void:
 	if not _online_mode or game_state.is_empty():
 		return
+	var incoming_roll_number := int(game_state.get("rollNumber", 0))
+	var should_play_roll := _online_roll_number >= 0 and incoming_roll_number > _online_roll_number
+	_online_roll_number = incoming_roll_number
 	_online_game = game_state.duplicate(true)
 	players.clear()
 	for raw_player in game_state.get("players", []):
@@ -1237,6 +1288,8 @@ func _on_online_game_state(game_state: Dictionary) -> void:
 	turn_score = int(game_state.get("turnScore", 0))
 	_online_display_turn_score = int(game_state.get("displayTurnScore", turn_score))
 	dice_to_roll = int(game_state.get("diceToRoll", 6))
+	if should_play_roll:
+		_dice_audio.play_roll(dice_to_roll)
 	current_roll.clear()
 	for value in game_state.get("currentRoll", []):
 		current_roll.append(int(value))
@@ -1264,10 +1317,10 @@ func _on_online_game_state(game_state: Dictionary) -> void:
 	if current_roll.is_empty():
 		_clear_dice()
 	else:
-		var suggested := PackedInt32Array()
-		for value in game_state.get("suggestedIndices", []):
-			suggested.append(int(value))
-		_show_hand_dice(suggested)
+		var selected := PackedInt32Array()
+		for value in game_state.get("selectedIndices", []):
+			selected.append(int(value))
+		_show_hand_dice(selected)
 
 	if game_over:
 		var winner_id := String(game_state.get("winnerId", ""))
@@ -1396,10 +1449,7 @@ func _debug_roll(rolled_dice: Array[int], suggested: PackedInt32Array) -> void:
 	var raw_roll_score := int(RULES.best_scoring_selection(rolled_dice).score)
 	var available_hand_score := 0
 	if not suggested.is_empty():
-		available_hand_score = int(RULES.score_persistent_hand(
-			locked_batches,
-			_values_for_indices(suggested)
-		).score)
+		available_hand_score = int(_score_hand(_values_for_indices(suggested)).score)
 	_debug_event("ROLL", [
 		"dice=%s" % _dice_text(rolled_dice),
 		"locked=%s" % _dice_text(_locked_values()),
@@ -1526,9 +1576,9 @@ func _panel_margin(amount: int) -> MarginContainer:
 
 func _rules_text() -> String:
 	return """[b][color=#f2ca66]THE TURN[/color][/b]
-Roll six dice. Select dice to lock, then press REROLL. Locked dice remain disabled in their original positions while every unselected die rerolls in place. Continue until all six dice score or a reroll cannot score or advance a qualifying combination. KEEP IT banks the current scoring hand and ends the turn.
+Roll six dice. No dice are selected automatically. Select dice to lock, then press REROLL. Unselected dice have no outline; selected and locked dice use a white outline. Locked dice remain disabled in their original positions while every unselected die rerolls in place. Continue until all six dice score or a reroll cannot score or advance a qualifying combination. KEEP IT banks the current scoring hand and ends the turn. After banking or busting, control advances to the next player automatically.
 
-REROLL is enabled when the selected dice contain at least one score, five faces toward a straight, three to five matching dice, two pairs toward the three-pair special, or one triple toward two triplets.
+REROLL is enabled when the selected dice contain at least one score, a pair toward three of a kind, five faces toward a straight, three to five matching dice, two pairs toward the three-pair special, or one triple toward two triplets. A non-scoring partial attempt may be started once per turn; its next roll must score or advance that attempt.
 
 [b][color=#f2ca66]GETTING ON THE BOARD[/color][/b]
 Your first banked turn must be worth at least 1,000 points. After that, you may bank any positive turn score. You must land on exactly 10,000 to win; exceeding 10,000 busts the turn and leaves your previously banked score unchanged.
@@ -1549,4 +1599,6 @@ When all six dice score, pick up all six and roll again if you continue. Every n
 
 [b][color=#f2ca66]NO-SCORE RESCUE — ONCE PER TURN[/color][/b]
 Only when the opening six-die roll has no scoring dice, a qualifying partial combination may be locked for one rescue reroll. If the rescue does not produce a score or advance the combination, the turn busts.
+
+Above 9,000, a pair of carried 1s and a later 1 remain three 100-point singles. A newly rolled combination worth at least 1,000 immediately busts if it would take the banked and current-turn score over exactly 10,000.
 """

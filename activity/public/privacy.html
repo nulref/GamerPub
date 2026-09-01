@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#17111b" />
+  <meta name="robots" content="index,follow" />
+  <meta name="description" content="Privacy Policy for Gamer Pub, a multiplayer game collection and Discord Activity operated by Steve Mulholland." />
+  <title>Privacy Policy · Gamer Pub</title>
+  <link rel="stylesheet" href="/legal.css" />
+</head>
+<body>
+<main class="legal-shell">
+  <header class="legal-header">
+    <p class="eyebrow">Gamer Pub · Legal</p>
+    <h1>Privacy Policy</h1>
+    <p class="legal-meta">Effective and last updated August 21, 2026<br />Operated by Steve Mulholland</p>
+    <nav class="legal-nav" aria-label="Legal pages">
+      <a href="/privacy.html" aria-current="page">Privacy Policy</a>
+      <a href="/terms.html">Terms of Service</a>
+      <a href="/">Return to Gamer Pub</a>
+    </nav>
+  </header>
+  <article class="legal-card">
+    <p class="summary">Gamer Pub uses a limited amount of Discord, gameplay, and optional voice-chat data to identify players, run multiplayer rooms, and keep each match synchronized. Gamer Pub does not sell personal information, serve targeted advertising, or use third-party advertising analytics.</p>
+
+    <section>
+      <h2>1. Scope and operator</h2>
+      <p>This Privacy Policy explains how Steve Mulholland ("Gamer Pub," "we," "us," or "our") processes information when you launch or play the Gamer Pub Discord Activity, visit the hosted Gamer Pub website, and use its related multiplayer services (collectively, the "Service").</p>
+      <p>Discord separately processes information under its own privacy policy. This Policy covers Gamer Pub's processing and does not replace Discord's terms or privacy notices.</p>
+    </section>
+
+    <section>
+      <h2>2. Information we process</h2>
+      <h3>Discord account and Activity information</h3>
+      <p>When you authorize and use Gamer Pub, the Service may receive or process your Discord user ID, username, global display name, Activity instance ID, and identifiers for the guild and voice or text channel in which the Activity is running. Gamer Pub may also access the list of users participating in the same Activity instance. Gamer Pub requests Discord's <strong>identify</strong> OAuth scope to identify the current player.</p>
+
+      <h3>Direct website guest identity</h3>
+      <p>When you use multiplayer directly from the hosted website rather than through Discord, Gamer Pub creates a random guest identifier and stores it in your browser. The identifier lets a reload reconnect as the same player and does not contain your name, email address, or Discord account information. You may replace the generated display name in the lobby.</p>
+
+      <h3>Lobby and gameplay information</h3>
+      <p>We process the name you choose for the lobby, seat assignment, ready and connection status, game actions, scores, and match state needed to operate an authoritative shared match. For Joker, this includes card passes, slap order, private hand contents, scores, letters, round state, and bot settings. For Tenk, this includes dice rolls, selected and locked dice, scoring decisions, turn state, scores, and bot settings. Other players receive the state needed to play, such as your display name, seat, readiness, actions, score, and game progress. In Joker, your exact hand is sent only to your connected client.</p>
+
+      <h3>Authentication information</h3>
+      <p>Gamer Pub sends a short-lived Discord authorization code to its Cloudflare-hosted server, which exchanges that code for an access token using the application's confidential client secret. The access token is returned to the Activity so it can authenticate with Discord. The server issues a short-lived signed session bound to the Discord user and Activity instance. Gamer Pub does not intentionally persist OAuth authorization codes, access tokens, or signed Activity sessions in its multiplayer room storage.</p>
+
+      <h3>Local preferences</h3>
+      <p>Sound, music, bot-speed preferences, and the direct website guest identifier may be stored locally by the Godot web game or wrapper in storage controlled by your browser or Discord client. These values generally remain until you clear the application's local data.</p>
+
+      <h3>Microphone access</h3>
+      <p>On the direct website, supported games may let you choose to join voice chat and grant Gamer Pub access to your microphone by tapping the voice control and approving your browser's permission prompt. While you remain in voice chat, microphone audio is transmitted using encrypted WebRTC connections to the other voice participants in the same public lobby. When a direct connection cannot be established, a configured Cloudflare TURN service may relay the encrypted media. Gamer Pub does not intentionally record or persist microphone audio.</p>
+      <p>Gamer Pub's multiplayer Worker relays temporary WebRTC connection descriptions and network candidates between current voice participants so their browsers can establish media connections. These signaling messages are not intentionally stored in room storage. Network candidates may disclose connection-related IP address information to WebRTC peers and relay infrastructure as required to establish the connection.</p>
+
+      <h3>Technical and service-provider data</h3>
+      <p>Discord, Netlify, Cloudflare, and their infrastructure may automatically process technical information such as IP address, device and browser characteristics, request timestamps, routing data, and security or diagnostic logs when they deliver the Service. We may access limited diagnostic information when needed to investigate an outage, abuse report, or security problem.</p>
+    </section>
+
+    <section>
+      <h2>3. How we use information</h2>
+      <p>We use the information described above to:</p>
+      <ul>
+        <li>identify players and connect them to the correct Discord Activity instance or public website lobby;</li>
+        <li>create lobbies, synchronize matches, operate bots, and enforce game rules;</li>
+        <li>display player names, readiness, game actions, results, and reconnect status;</li>
+        <li>connect players who voluntarily join browser voice chat and relay temporary connection-negotiation messages;</li>
+        <li>maintain the security, reliability, and integrity of the Service;</li>
+        <li>diagnose errors, prevent abuse, and respond to support or privacy requests; and</li>
+        <li>comply with applicable legal obligations.</li>
+      </ul>
+      <p>Where applicable law requires a legal basis, processing is based on providing the Service you request, our legitimate interests in operating and securing the Service, your consent where requested, and compliance with law.</p>
+    </section>
+
+    <section>
+      <h2>4. How information is disclosed</h2>
+      <ul>
+        <li><strong>Other players:</strong> multiplayer participants receive the shared lobby and game information necessary to play. Exact private Joker hands are not intentionally disclosed to opponents. Players who join browser voice chat transmit microphone audio and WebRTC connection information to the other voice participants.</li>
+        <li><strong>Service providers:</strong> Discord provides the Activity platform and identity flow; Netlify hosts the static Activity files; and Cloudflare hosts the OAuth exchange, signed-session service, WebSocket service, temporary room state, and optional TURN media relay.</li>
+        <li><strong>Legal and safety reasons:</strong> information may be disclosed when reasonably necessary to comply with law, protect users, investigate fraud or abuse, or defend legal rights.</li>
+        <li><strong>Business changes:</strong> information may be transferred as part of a merger, acquisition, financing, reorganization, or transfer of the Service, subject to appropriate protections.</li>
+      </ul>
+      <p>Gamer Pub does not sell personal information or share it for cross-context behavioral advertising. Gamer Pub does not use personal information to deliver targeted advertising.</p>
+    </section>
+
+    <section>
+      <h2>5. Retention</h2>
+      <p>Active multiplayer room and match state is stored in a Cloudflare Durable Object. Direct-website rooms and Tenk Activity rooms are cleared when their final connection closes. A disconnected Joker Activity room is scheduled for deletion after approximately <strong>six hours</strong>; reconnecting during that period may reactivate it.</p>
+      <p>OAuth authorization codes, Discord access tokens, and signed Activity sessions are not intentionally stored in room state. WebRTC signaling messages and microphone audio are not intentionally recorded or persisted by Gamer Pub. Short-lived TURN credentials expire automatically. Local preferences remain on your device until cleared. Hosting and security logs may be retained by service providers under their own operational and legal retention practices. We may retain information longer when reasonably necessary for security, dispute resolution, or compliance with law.</p>
+    </section>
+
+    <section>
+      <h2>6. Security</h2>
+      <p>We use reasonable administrative and technical safeguards appropriate to this Service, including HTTPS and secure WebSocket transport, server-side storage of Discord credentials, signed sessions that bind Discord identity to an Activity instance, and separation of each player's private Joker hand in multiplayer responses. No method of transmission or storage is completely secure, so we cannot guarantee absolute security.</p>
+    </section>
+
+    <section>
+      <h2>7. Your choices and privacy rights</h2>
+      <p>You may stop processing by leaving or closing the Activity. Browser voice chat is optional; you may mute, leave voice, revoke microphone permission, or close the page at any time. You can change the display name used in a lobby and can clear locally stored preferences through your browser or Discord client settings. Depending on where you live, you may have rights to request access, correction, deletion, restriction, portability, or objection regarding your personal information, and to appeal or complain to a privacy regulator.</p>
+      <p>To make a request concerning information controlled by Gamer Pub, contact us using the address below. We may need to verify your request. Requests concerning Discord's own account records or platform processing should be directed to Discord.</p>
+    </section>
+
+    <section>
+      <h2>8. Children</h2>
+      <p>Gamer Pub is not directed to children under 13 or anyone below the minimum age required to use Discord in their country. We do not knowingly collect personal information from a child who is not permitted to use the Service. If you believe this has occurred, please contact us so we can investigate and delete the information where appropriate.</p>
+    </section>
+
+    <section>
+      <h2>9. International processing</h2>
+      <p>The Service and its providers may process information in countries other than your own. Those countries may have different data-protection laws. Where required, applicable safeguards are provided by the relevant service provider or as otherwise required by law.</p>
+    </section>
+
+    <section>
+      <h2>10. Changes to this Policy</h2>
+      <p>We may update this Privacy Policy as the Service changes. The revised version will be posted at this URL with a new "last updated" date. Material changes may also be communicated through the Service or Discord when appropriate.</p>
+    </section>
+
+    <section class="contact-card">
+      <h2>11. Contact</h2>
+      <p><strong>Steve Mulholland</strong></p>
+      <p>Email: <a href="mailto:flatlus.games@protonmail.com">flatlus.games@protonmail.com</a></p>
+    </section>
+  </article>
+  <footer class="legal-footer">Gamer Pub · A Discord Activity</footer>
+</main>
+</body>
+</html>

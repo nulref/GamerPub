@@ -1,0 +1,68 @@
+{
+  "scoring": {
+    "faces": {
+      "1": {
+        "single": 100,
+        "triple": 1000
+      },
+      "2": {
+        "triple": 200
+      },
+      "3": {
+        "triple": 300
+      },
+      "4": {
+        "triple": 400
+      },
+      "5": {
+        "single": 50,
+        "triple": 500
+      },
+      "6": {
+        "triple": 600
+      }
+    },
+    "of-a-kind": {
+      "minimum-count": 3,
+      "additional-die-multiplier": 2
+    },
+    "special-patterns": [
+      {
+        "id": "straight",
+        "description": "One of every face",
+        "face-counts": {
+          "1": 1,
+          "2": 1,
+          "3": 1,
+          "4": 1,
+          "5": 1,
+          "6": 1
+        },
+        "exact-dice-count": 6,
+        "score": 1500
+      },
+      {
+        "id": "three-pairs",
+        "description": "Three distinct pairs",
+        "group-sizes": [2, 2, 2],
+        "distinct-faces": true,
+        "exact-dice-count": 6,
+        "score": 1000
+      },
+      {
+        "id": "two-triples",
+        "description": "Two distinct triples",
+        "group-sizes": [3, 3],
+        "distinct-faces": true,
+        "exact-dice-count": 6,
+        "score": 1000
+      }
+    ],
+    "resolution": {
+      "score-each-face-independently": true,
+      "sum-independent-face-scores": true,
+      "method": "highest-valid-score",
+      "special-patterns-compete-with-standard-score": true
+    }
+  }
+}

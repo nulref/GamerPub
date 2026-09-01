@@ -1,0 +1,20 @@
+{
+  "name": "gamer-pub-discord-activity",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "sync:godot": "node scripts/sync-godot.mjs",
+    "dev": "npm run sync:godot && vite --host 0.0.0.0",
+    "build": "npm run sync:godot && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "check": "node --check src/main.js && node --check src/activity-client.js && node --check src/room-client.js && node --check scripts/sync-godot.mjs && node --check vite.config.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@discord/embedded-app-sdk": "^2.5.0"
+  },
+  "devDependencies": {
+    "vite": "^8.2.1"
+  }
+}
