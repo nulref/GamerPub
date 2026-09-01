@@ -8,13 +8,15 @@ The launcher currently includes:
 
 - A responsive, data-driven carousel with at most six visible cards
 - Mouse, keyboard-focus, and previous/next navigation
-- Joker, TenK, and Cribbage as playable games in the collection
-- Seven placeholder entries ready to be replaced by future games
+- Joker, TenK, Sesquip, and Cribbage as playable games in the collection
+- Six placeholder entries ready to be replaced by future games
 - Direct scene routing into each game and return routes back to Gamer Pub
 
 Joker supports local play against bots and retains its Discord multiplayer bridge. Multiplayer is available when the exported game is hosted by the Gamer Pub or standalone Joker Discord Activity shell.
 
 TenK supports 2–8 local hot-seat players, interactive dice selection, the 1,000-point opening requirement, hot dice, and the Gamer Pub "go for it" house rule. The hosted Web build adds a shared 2–8 player room with host-controlled start, server-authoritative turns and dice, reconnect state, and optional eight-person voice chat.
+
+Sesquip is an early local hot-seat word game for 2–4 players. Players have five seconds to extend a shared sequence using one of the legal letters illuminated on screen. The player who reaches a terminal word scores one point per letter. Its bundled local lexicon is intentionally a prototype rather than a licensed tournament word list.
 
 Cribbage supports Standard 2–4 player games, Partnership tables for 2 or 4 players, and the five- and six-player house-rule Variants. Single player fills every other seat with bots, including partners. Browser and Discord multiplayer use the shared ready-up flow and server-authoritative private hands. Its landscape-first table scales down for mobile browsers and asks portrait users to rotate.
 
@@ -50,6 +52,11 @@ Gamer Pub/
 │   │   ├── scenes/
 │   │   ├── scripts/
 │   │   └── tests/
+│   ├── sesquip/                    # Sesquip word game
+│   │   ├── data/                   # Prototype local lexicon
+│   │   ├── scenes/
+│   │   ├── scripts/
+│   │   └── tests/
 │   └── cribbage/                   # Cribbage, bots, and responsive table
 │       ├── scenes/
 │       ├── scripts/
@@ -69,7 +76,7 @@ Game-specific files stay under `games/<game_name>/`. Assets and systems intentio
 1. Install Godot 4.7.1 or a compatible Godot 4 release.
 2. Import the root `project.godot` into the Godot Project Manager.
 3. Press **F5** to open the Gamer Pub launcher.
-4. Select **Joker**, **TenK**, or **Cribbage** from the carousel.
+4. Select **Joker**, **TenK**, **Sesquip**, or **Cribbage** from the carousel.
 
 From Joker's menu, **Back to Gamer Pub** returns to the launcher.
 
@@ -101,7 +108,7 @@ setup.
 
 - Select scoring dice or a qualifying partial combination, then choose **Reroll** to lock them and reroll every unselected die in place.
 - Matching sets score within one roll; a locked pair may be completed by one matching die on the immediately following roll.
-- Choose **Keep It** to bank an eligible turn; TenK automatically advances to the next player after a score or bust.
+- Choose **Keep It** to bank an eligible turn; Tenk automatically advances to the next player after a score or bust.
 - Press <kbd>Space</kbd> or <kbd>Enter</kbd> to roll or reroll.
 
 ## Joker controls
@@ -109,6 +116,12 @@ setup.
 - Click a card or press <kbd>1</kbd>-<kbd>5</kbd> to pass it.
 - Press <kbd>Space</kbd> or select **Slap the Table** to slap.
 - Use the settings menu to adjust sound and bot pacing.
+
+## Sesquip controls
+
+- Select an illuminated key or press its matching physical letter key before the five-second timer expires.
+- Keep extending through complete words while legal continuations remain; the terminal word scores.
+- A timeout passes the turn. Consecutive timeouts by every player abandon the round without points.
 
 ## Cribbage controls
 
@@ -140,6 +153,14 @@ Run 10,000's checks from the same location:
 ```powershell
 godot --headless --path . --script games/tenk/tests/test_rules.gd
 godot --headless --path . --script games/tenk/tests/test_game_flow.gd
+```
+
+Run Sesquip's checks from the same location:
+
+```powershell
+godot --headless --path . --script games/sesquip/tests/test_lexicon.gd
+godot --headless --path . --script games/sesquip/tests/test_game_flow.gd
+godot --headless --path . --script tests/test_sesquip_launcher.gd
 ```
 
 ## Adding a game

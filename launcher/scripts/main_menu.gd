@@ -6,6 +6,7 @@ const GAME_CARD_SCRIPT := preload("res://launcher/scripts/game_card.gd")
 const GAME_LOGO := preload("res://launcher/assets/art/gp_logo.webp")
 const JOKER_LOGO := preload("res://shared/assets/Cards/card_joker.png")
 const TENK_LOGO := preload("res://shared/assets/Dice/die_red_1.png")
+const SESQUIP_LOGO := preload("res://games/sesquip/assets/sesquip_mark.svg")
 const CRIBBAGE_LOGO := preload("res://shared/assets/Cards/card_spade_1.png")
 
 const MAX_VISIBLE_CARDS := 6
@@ -34,7 +35,12 @@ const GAMES: Array[Dictionary] = [
 		"logo": TENK_LOGO,
 		"scene": "res://games/tenk/scenes/game.tscn",
 	},
-	{"id": &"game_03", "name": "Game 03", "logo": GAME_LOGO},
+	{
+		"id": &"sesquip",
+		"name": "Sesquip",
+		"logo": SESQUIP_LOGO,
+		"scene": "res://games/sesquip/scenes/game.tscn",
+	},
 	{
 		"id": &"cribbage",
 		"name": "Cribbage",
